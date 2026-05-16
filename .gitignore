@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+logs/
+.claude/settings.local.json
+.idea/
+tmp/
+
+workspaces/
+references/
