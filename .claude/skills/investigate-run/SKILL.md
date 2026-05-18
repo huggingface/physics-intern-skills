@@ -3,7 +3,6 @@ name: investigate-run
 description: Post-mortem analysis of a PhysicsIntern workspace run. Reconstructs the trajectory from the Claude Code session JSONL, audits methodology adherence against the workspace's own CLAUDE.md and skill/agent prompts, checks commit discipline and flag dispositions, and assesses substantive quality. Produces a thorough evidence-anchored markdown report. Use after a v2 workspace has been worked on to identify what went well, where the methodology slipped, and what prompts to improve.
 context: fork
 agent: general-purpose
-disable-model-invocation: true
 arguments: [workspace_path, session_id]
 ---
 
