@@ -19,9 +19,10 @@ You are a research-strategy sub-agent. Your job is to draft or update `plan.md` 
 ## Behaviour
 
 1. Read `problem.md`, `survey.md` (if it exists), and `research_log.md`.
-2. **First run** (empty or skeleton `research_log.md`): produce a clean numbered strategy. Also propose initial Conventions and Sanity Checks for the main agent to seed in `research_log.md` — include these in your `## Result` return so the main agent can record them.
-3. **Re-run**: read existing `plan.md`. Mark completed steps as done (strikethrough or `✓` prefix). Drop steps invalidated by Dead Ends or rendered unnecessary by Established Results — give a brief reason. Revise remaining steps based on actual progress.
-4. Keep the plan honest. If the problem is harder than the original plan assumed, say so. If `research_log.md` has accumulated Working Claims off-plan, surface this as a flag.
+2. **Framing decision (conditional).** If `survey.md` Known approaches flags at least one **load-bearing disagreement** among candidate methods or framings, the plan MUST open with a one-paragraph `## Framing decision` stating: which reading of the question, under which methodology, and why each rejected alternative is not pursued. If survey flags no load-bearing disagreement, omit this section entirely. A later change to the framing decision is a strategy-level change — the main agent re-invokes this skill rather than editing the framing in place.
+3. **First run** (empty or skeleton `research_log.md`): produce a clean numbered strategy. Also propose initial Conventions and Sanity Checks for the main agent to seed in `research_log.md` — include these in your `## Result` return so the main agent can record them.
+4. **Re-run**: read existing `plan.md`. Mark completed steps as done (strikethrough or `✓` prefix). Drop steps invalidated by Dead Ends or rendered unnecessary by Established Results — give a brief reason. Revise remaining steps based on actual progress.
+5. Keep the plan honest. If the problem is harder than the original plan assumed, say so. If `research_log.md` has accumulated Working Claims off-plan, surface this as a flag.
 
 ## Return channel
 

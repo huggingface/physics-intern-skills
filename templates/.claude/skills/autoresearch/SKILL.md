@@ -47,8 +47,9 @@ Append one block to `notes/auto-decisions.md` at every gate the main agent skipp
 Gate names to use (use these exact strings so the audit skill can grep them):
 
 - `Post-survey gate` — proceeding from `/survey` to `/research-plan`.
+- `Framing gate` — committing to a question reading / methodology when `survey.md` Known approaches flagged a load-bearing disagreement among candidates. Logged after `/research-plan` returns with its `## Framing decision`; the block must capture which alternatives were rejected and why. A later decision to revise the framing is a strategy-level change and is re-logged under `Pre-strategy-change gate`.
 - `Post-plan gate` — proceeding from `/research-plan` into the first dispatch.
-- `Pre-strategy-change gate` — re-invoking `/research-plan` for a strategy shift (after the second critique).
+- `Pre-strategy-change gate` — re-invoking `/research-plan` for a strategy shift (after the second critique, or when revising a prior framing decision).
 - `Refutation gate` — acting on a `/review` refutation after the second-opinion review agrees.
 - `Pre-finalize gate` — proceeding to `/finalize`.
 
@@ -87,7 +88,9 @@ while not (terminated or halted):
   if entry_point == survey:
     /survey  → integrate  → log Post-survey gate decision  → entry_point = plan
   elif entry_point == plan:
-    /research-plan  → integrate  → log Post-plan gate decision  → entry_point = loop
+    /research-plan  → integrate  → log Post-plan gate decision
+                                  (and Framing gate decision if survey flagged a load-bearing disagreement)
+                                  → entry_point = loop
   elif entry_point == loop:
     pick next dispatch from plan.md + research_log.md open work:
       if a derivation/computation is the next step:
