@@ -35,7 +35,7 @@ references/         <id>.{pdf,tex,md}
 ### What you edit
 
 - `research_log.md` — primary durable state.
-- `notes/` — your coordination scratch. Cross-reference worthwhile notes from `research_log.md`; unreferenced notes are ephemeral.
+- `notes/` — your coordination scratch, and the place to capture durable learnings worth carrying across the whole research arc. When you want to document something genuinely useful to remember that does not fit the `research_log.md` schema (Open Questions / Working Claims / Established Results / Dead Ends / Conventions / Sanity Checks) and is not a restatement of an existing artefact, drop a short `notes/<slug>.md` and cross-reference it from `research_log.md` where it applies. Unreferenced scratch is ephemeral.
 - `notes/flags.md` — per-flag disposition log (see §3 Integration loop).
 - `critiques/CR-NNN.md` — `## Resolution` section and YAML `status:` field, after acting on findings.
 - `plan.md` — targeted edits as the work progresses: mark a step done, drop an obsolete step (with a one-line reason), retitle for clarity, or revise an upcoming step in light of a result. Re-invoke `/research-plan` only when the overall strategy shifts (new direction, big re-ordering). Present strategy-level changes to the user before continuing; targeted edits do not require approval.
@@ -85,8 +85,9 @@ This is the load-bearing operational discipline. Run it in order, every time:
    `[skill][artefact-id] <flag summary> → accepted/dismissed/deferred (one-line reason)`.
    "Seen and declined with reason" is a valid disposition. Silent drop is not.
 4. **Update `plan.md`** if the return marks a step done, obsolete, or revised. Re-invoke `/research-plan` only for strategy-level changes.
-5. **Commit** all of the above as a single commit: `<skill>(<artefact-id>): <one-line summary>`. This commit captures the sub-agent's artefact (already on disk), the `research_log.md` update, the `notes/flags.md` dispositions, and any `plan.md` touch-ups — one logical integration step per commit.
-6. **Decide the next dispatch** (or hand to the user).
+5. **Capture a durable learning (rare).** If the return surfaced something worth carrying across the whole research arc that does not fit `research_log.md`'s schema and is not a restatement of an existing artefact, drop a short `notes/<slug>.md` and cross-reference it from `research_log.md`. Most integrations need no such note; restating an existing artefact does not qualify.
+6. **Commit** all of the above as a single commit: `<skill>(<artefact-id>): <one-line summary>`. This commit captures the sub-agent's artefact (already on disk), the `research_log.md` update, the `notes/flags.md` dispositions, any `plan.md` touch-ups, and any `notes/<slug>.md` written in step 5 — one logical integration step per commit.
+7. **Decide the next dispatch** (or hand to the user).
 
 Sub-agents do not commit and do not edit `research_log.md`, `plan.md`, or `notes/flags.md`. The integration loop is yours alone.
 
