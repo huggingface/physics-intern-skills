@@ -30,6 +30,7 @@ computations/       C-NNN.{md,py}      (sub-agent territory)
 critiques/          CR-NNN.md          (sub-agent writes; YOU update ## Resolution + status)
 notes/              YOUR coordination scratch (incl. notes/flags.md — flag log)
 references/         <id>.{pdf,tex,md}
+data/               numerical inputs/outputs of computations
 ```
 
 ### What you edit

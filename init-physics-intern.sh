@@ -36,7 +36,7 @@ if [[ -f CLAUDE.md ]] && grep -q "PhysicsIntern workspace" CLAUDE.md; then
   echo "  - .git/ (all commit history, including uncommitted work)"
   echo "  - .claude/, .gitignore, CLAUDE.md, research_log.md"
   echo "  - plan.md, survey.md, answer.md (if present)"
-  echo "  - derivations/, computations/, critiques/, notes/, references/"
+  echo "  - derivations/, computations/, critiques/, notes/, references/, data/"
   echo "  - anything else in this directory"
   echo
   printf "Reset? [y/N] "
@@ -68,7 +68,7 @@ if [[ ! -f problem.md ]]; then
 EOF
 fi
 
-for d in derivations computations critiques notes references; do
+for d in derivations computations critiques notes references data; do
   mkdir -p "$d"
   touch "$d/.gitkeep"
 done
