@@ -26,6 +26,8 @@ claude                                          # then in Claude Code:
 
 The bootstrap script copies `templates/` into the target, scaffolds `problem.md` if missing, creates the artefact directories (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`), seeds `notes/flags.md`, initialises git, and makes the first commit. Re-running on an existing workspace prompts for a reset (preserves `problem.md`, wipes everything else).
 
+The script also accepts `--host=pi` for the experimental Pi target — it copies `templates-pi/` instead, and the launch sequence is `pi install -l .` then `pi`. See §Other hosts in Next Steps.
+
 
 ## Repo layout
 
@@ -34,7 +36,7 @@ physics-intern/
 ├── README.md                          # this file
 ├── CLAUDE.md                          # repo-level dev instructions (not workspace)
 ├── init-physics-intern.sh             # workspace bootstrap script
-├── templates/                         # what init-physics-intern.sh copies into a new workspace
+├── templates/                         # Claude Code template (init copies this with --host=claude, the default)
 │   ├── CLAUDE.md                      # workspace main-agent system prompt
 │   ├── research_log.md                # skeleton with canonical sections
 │   ├── gitignore
@@ -58,6 +60,16 @@ physics-intern/
 │           ├── critique/
 │           ├── finalize/
 │           └── autoresearch/          # autonomous full-pipeline driver
+├── templates-pi/                      # Pi template (init copies this with --host=pi, experimental)
+│   ├── AGENTS.md                      # workspace main-agent system prompt (Pi-native)
+│   ├── research_log.md
+│   ├── gitignore
+│   ├── package.json                   # declares pi.{skills,prompts,extensions}
+│   ├── .pi/
+│   │   ├── settings.json              # declares pi-subagents + pi-web-access packages
+│   │   └── agents/                    # same 7 role prompts, ported to Pi tool conventions
+│   ├── skills/                        # 9 thin SKILL.md dispatcher stubs
+│   └── prompts/                       # 9 workflow prompts (where the methodology dispatch lives)
 ├── .claude/skills/
 │   └── investigate-run/               # repo-level audit skill (used while iterating here)
 ├── workspaces/                        # sample workspaces — methodology test runs and real research
@@ -143,4 +155,7 @@ None ship today. `/compute` uses SymPy + NumPy; `/survey` uses host-provided web
 Planned but not implemented: `mcp-arxiv` (arxiv search/fetch), `mcp-papers` (index `references/`), `mcp-mathematica` (symbolic backend for license-holders), and tensor-algebra backends.
 
 ### Other hosts
-- **Pi adapter** — only Claude Code is supported today.
+
+- **Pi adapter (experimental).** `templates-pi/` mirrors `templates/` in methodology content but uses Pi-native conventions: workspace prompt at `AGENTS.md`, sub-agent prompts at `.pi/agents/<role>.md`, project settings at `.pi/settings.json`, and skill/prompt directories declared in `package.json` under the `pi:` block. Sub-agent dispatch goes through the upstream `pi-subagents` npm package (auto-installed from `.pi/settings.json` on first launch), with the methodology contract — structured returns, integration loop, fresh-context isolation, brief-file dispatch pattern — encoded in `AGENTS.md` and the prompt bodies. Skills are split Feynman-style into thin `skills/<name>/SKILL.md` stubs and substantive workflow files in `prompts/<name>.md`. Launch sequence after `init-physics-intern.sh --host=pi`: `pi install -l .`, then `pi`. **The Pi path is a parallel template, not a refactor**: `templates/` is unchanged. A future refactor will extract a host-neutral core; for now duplication is intentional, so the two hosts evolve independently while the methodology stabilises.
+
+- **Other harnesses** (Codex, OpenCode, Gemini CLI, Goose) — not implemented. The natural next ports once `templates-pi/` is validated; Codex is the closest structural cousin to Claude Code (manifest + skills + per-agent TOML) and would likely port mechanically.

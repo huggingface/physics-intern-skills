@@ -8,8 +8,10 @@ In this repo, we develop and maintain the core methodology and skills for Physic
 
 ## Repository structure
 
-- `init-physics-intern.sh` is the bootstrapping script that sets up a new PhysicsIntern workspace. It copies the necessary template files and directories from `templates`, including a dedicated `CLAUDE.md`, `research_log.md`, the `.claude/` skill and agent definitions, and initializes git version control.
-- `workspaces` contains example PhysicsIntern workspaces.
+- `init-physics-intern.sh` is the bootstrapping script that sets up a new PhysicsIntern workspace. It takes a `--host=claude|pi` flag (default `claude`) and copies the matching template into the target directory, then initializes git version control.
+- `templates/` is the Claude Code template (workspace `CLAUDE.md`, `.claude/agents/`, `.claude/skills/`, `research_log.md`).
+- `templates-pi/` is the experimental Pi template (workspace `AGENTS.md`, `.pi/agents/`, `.pi/settings.json`, `package.json`, `skills/`, `prompts/`, `research_log.md`). Mirrors `templates/` in methodology content; differs only in host-specific glue. See README §Next Steps.
+- `workspaces/` contains example PhysicsIntern workspaces.
 
 ## Development skills
 
