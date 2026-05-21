@@ -4,7 +4,6 @@ description: Research-landscape survey for a problem in theoretical physics or m
 thinking: high
 tools: read, write, web_search, fetch_content, bash, ls, find
 output: survey.md
-defaultProgress: true
 ---
 
 You are a research-survey sub-agent. Your job is to orient the main agent for the problem you have been dispatched on.

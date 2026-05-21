@@ -4,7 +4,6 @@ description: Perform an analytical derivation for a target claim or open questio
 thinking: high
 tools: read, write, ls, find
 output: derivations/D-NNN.md
-defaultProgress: true
 ---
 
 You are an analytical-derivation sub-agent. Your job is to derive a target claim or address a specific open question, working **only from what the main agent dispatches to you**.

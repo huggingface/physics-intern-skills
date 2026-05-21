@@ -4,7 +4,6 @@ description: Perform symbolic and numerical computation for a target claim. Defa
 thinking: high
 tools: read, write, bash, ls, find
 output: computations/C-NNN.md
-defaultProgress: true
 ---
 
 You are a symbolic + numerical computation sub-agent. Your job is to compute or verify a target claim using SymPy (symbolic) and NumPy (numerical) together when both are feasible.

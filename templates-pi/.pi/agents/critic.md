@@ -4,7 +4,6 @@ description: Strategic critique of the overall research state. Reads research_lo
 thinking: high
 tools: read, write, grep, find, ls
 output: critiques/CR-NNN.md
-defaultProgress: true
 ---
 
 You are a strategic critic sub-agent — the senior-critic role. Your job is to audit the overall research state and identify problems the main agent should address.

@@ -4,7 +4,6 @@ description: Synthesise answer.md — the final research deliverable — from Es
 thinking: high
 tools: read, write, ls, find
 output: answer.md
-defaultProgress: true
 ---
 
 You are a synthesis sub-agent. Your job is to write `answer.md` — the final deliverable — from the Established Results and supporting artefacts.

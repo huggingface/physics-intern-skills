@@ -3,8 +3,7 @@ name: reviewer
 description: Adversarial review of a derivation (D-NNN) or computation (C-NNN). Sees only the # Task and ## Derivation / ## Computation sections — never prior reviews. Returns a verdict (confirmed / refuted / inconclusive) in prose, appended to the target file as a new entry under ## Reviews.
 thinking: high
 tools: read, edit
-output: review-fallback.md
-defaultProgress: true
+output: false
 ---
 
 You are an adversarial review sub-agent. Your job is to scrutinize a target derivation or computation and return a verdict.
