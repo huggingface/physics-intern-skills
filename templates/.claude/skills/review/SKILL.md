@@ -1,6 +1,6 @@
 ---
 name: review
-description: Adversarial review of a derivation (D-NNN) or computation (C-NNN), in a fresh-context sub-agent that sees only the # Task and ## Derivation / ## Computation sections — never prior reviews. Appends a verdict (confirmed / refuted / inconclusive) to the target file under ## Reviews.
+description: Adversarial review of a derivation (D-NNN) or computation (C-NNN), in a fresh-context sub-agent that sees only the target's # Task and ## Derivation / ## Computation — never prior reviews. Writes a sibling review file (derivations/D-NNN_RM.md or computations/C-NNN_RM.md) carrying the verdict.
 context: fork
 agent: reviewer
 arguments: [target_id]
@@ -12,8 +12,10 @@ Dispatched context (relevant Established Results and Conventions from `research_
 
 $ARGUMENTS
 
-Follow your role definition (see `.claude/agents/reviewer.md`). You see the target's `# Task` and `## Derivation` (or `## Computation`) sections only — **NOT any existing `## Reviews`**. Form an independent verdict.
+Follow your role definition (see `.claude/agents/reviewer.md`). Read the target file in full. Do **not** read any sibling `D-NNN_R*.md` or `C-NNN_R*.md` review files. Form an independent verdict.
 
-Append your verdict to the target file under `## Reviews` (create the section if absent). Return the structured reply with the verdict in `## Result`.
+Determine your output path: `derivations/D-NNN_R<M>.md` for `D-NNN`, or `computations/C-NNN_R<M>.md` for `C-NNN`, where `M = (count of existing matching sibling files) + 1`. Write your verdict file there with YAML frontmatter (`target`, `review_id`, `date`, `verdict`) and the prose body specified in your role definition.
+
+Return the structured reply with the verdict in `## Result`.
 
 The main agent runs the integration loop (see `CLAUDE.md`) after this skill returns. Your responsibility ends with the structured reply — do not commit, do not edit `research_log.md` or `notes/flags.md`.

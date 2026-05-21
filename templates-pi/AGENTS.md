@@ -37,8 +37,10 @@ plan.md             written by /research-plan; YOU make targeted edits
 research_log.md     YOU own; primary durable state
 answer.md           written by /finalize
 derivations/        D-NNN.md            (sub-agent territory)
+                    D-NNN_RM.md         sibling review file per /review on D-NNN (sub-agent territory)
   .briefs/          D-NNN-brief.md      dispatch briefs YOU write before /derive
 computations/       C-NNN.{md,py}       (sub-agent territory)
+                    C-NNN_RM.md         sibling review file per /review on C-NNN (sub-agent territory)
   .briefs/          C-NNN-brief.md      dispatch briefs YOU write before /compute
 critiques/          CR-NNN.md           (sub-agent writes; YOU update ## Resolution + status)
 notes/              YOUR coordination scratch (incl. notes/flags.md — flag log)
@@ -55,7 +57,7 @@ data/               numerical inputs/outputs of computations
 - `critiques/CR-NNN.md` — `## Resolution` section and YAML `status:` field, after acting on findings.
 - `plan.md` — targeted edits as the work progresses: mark a step done, drop an obsolete step (with a one-line reason), retitle for clarity, or revise an upcoming step in light of a result. Re-invoke `/research-plan` only when the overall strategy shifts (new direction, big re-ordering). Present strategy-level changes to the user before continuing; targeted edits do not require approval.
 
-You do NOT edit: `derivations/D-NNN.md`, `computations/C-NNN.{md,py}`, `survey.md`, `answer.md`, `## Reviews` sections in artefact files, or `references/<id>.md` summaries. Those are sub-agent territory.
+You do NOT edit: `derivations/D-NNN.md`, `derivations/D-NNN_RM.md`, `computations/C-NNN.{md,py}`, `computations/C-NNN_RM.md`, `survey.md`, `answer.md`, or `references/<id>.md` summaries. Those are sub-agent territory.
 
 ### `research_log.md` discipline
 
@@ -76,7 +78,7 @@ You operate sub-agents in a cycle: **write brief → dispatch via `subagent` →
 
 ### Fork model & fresh context
 
-Each skill forks to a fresh-context sub-agent (via the `subagent` tool, provided by the `pi-subagents` package) that does the substantive work and writes its own artefact. You own the loop around it. Sub-agents do not see prior conversation, do not see prior `## Reviews` on the same target, and receive only one-line summaries of prior critiques. **Don't bypass the fork model** — passing reviewer context across reviews defeats the whole point of adversarial re-check.
+Each skill forks to a fresh-context sub-agent (via the `subagent` tool, provided by the `pi-subagents` package) that does the substantive work and writes its own artefact. You own the loop around it. Sub-agents do not see prior conversation, do not read sibling review files (`D-NNN_R*.md` / `C-NNN_R*.md`) for the target they are reviewing, and receive only one-line summaries of prior critiques. **Don't bypass the fork model** — passing reviewer context across reviews defeats the whole point of adversarial re-check.
 
 Treat each sub-agent return as **provisional** until cross-checked. `survey.md` is the canonical case: it captures the landscape at the time it was written and is overridden by later evidence (a successful derivation, a confirmed computation). The same caution applies in smaller measure to any single derivation, computation, review, or critique — which is why robust evidence (§2 invariant 2) and checks-and-balances (below) exist.
 
@@ -143,7 +145,7 @@ All workflow skills fork to fresh-context sub-agents via the `subagent` tool and
 - `/research-plan` — drafts or updates `plan.md`. HITL: present the draft to the user for approval before continuing.
 - `/derive <claim>` — analytical derivation. Writes `D-NNN.md`. You add a Working Claim.
 - `/compute <claim>` — symbolic + numerical work. Writes `C-NNN.{md,py}`. You add a Working Claim.
-- `/review <D-NNN | C-NNN>` — adversarial review. Sub-agent appends `## Reviews` to the target. You update the review status entry in `research_log.md`.
+- `/review <D-NNN | C-NNN>` — adversarial review. Sub-agent writes a sibling review file `derivations/D-NNN_RM.md` (or `computations/C-NNN_RM.md`) carrying the verdict. You update the review status entry in `research_log.md`.
 - `/critique` — strategic critique of overall research state. Writes `CR-NNN.md`. You disposition each finding: resolve, dismiss, or defer.
 - `/finalize` — synthesises `answer.md` from Established Results.
 - `/start-research` and `/autoresearch` run in your context (no fork) — see their workflow prompts.

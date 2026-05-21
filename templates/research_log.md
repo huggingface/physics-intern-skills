@@ -22,6 +22,12 @@ Format:
 - W1: <claim, with concrete value or expression>
   - sources: D-002 (review: confirmed), C-001 (no review yet)
   - depends on: E2
+
+If a target has multiple reviews, list each by R-number with its verdict:
+  - sources: D-002 (R1: refuted, R2: confirmed), C-001 (review: confirmed)
+
+Review evidence lives in sibling files (`derivations/D-NNN_RM.md`, `computations/C-NNN_RM.md`).
+The annotation above is the index; the evidence file is the record.
 -->
 
 ## Established Results
