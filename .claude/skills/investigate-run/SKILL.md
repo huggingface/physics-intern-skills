@@ -1,6 +1,6 @@
 ---
 name: investigate-run
-description: Post-mortem analysis of a PhysicsIntern workspace run. Reconstructs the trajectory from the Claude Code session JSONL, audits methodology adherence against the workspace's own CLAUDE.md and skill/agent prompts, checks commit discipline and flag dispositions, and assesses substantive quality. Produces a thorough evidence-anchored markdown report. Use after a v2 workspace has been worked on to identify what went well, where the methodology slipped, and what prompts to improve.
+description: Post-mortem analysis of a PhysicsIntern workspace run (Claude Code or Pi host). Reconstructs the trajectory from the session JSONL(s), audits methodology adherence against the workspace's own CLAUDE.md / AGENTS.md and skill/agent prompts, checks commit discipline and flag dispositions, and assesses substantive quality. Produces a thorough evidence-anchored markdown report. Use after a workspace has been worked on to identify what went well, where the methodology slipped, and what prompts to improve.
 context: fork
 agent: general-purpose
 arguments: [workspace_path, session_id]
@@ -10,9 +10,9 @@ arguments: [workspace_path, session_id]
 
 You are auditing a PhysicsIntern workspace run. Three sources:
 
-1. **The workspace** at `$workspace_path` — files, git history, the actual `.claude/` skills/agents and `CLAUDE.md` the run was operating under.
-2. **The session JSONL** — every prompt, response, and tool call from the run.
-3. **The methodology contract** — the workspace's own `CLAUDE.md`, `.claude/skills/`, `.claude/agents/`. These are the rules the run is being audited against. (Optional: the canonical `DESIGN.md` if available in the open_dirac repo for cross-reference.)
+1. **The workspace** at `$workspace_path` — files, git history, and the actual skills/agents and methodology file the run was operating under (`.claude/` + `CLAUDE.md` for Claude Code, `.pi/` + `AGENTS.md` for Pi).
+2. **The session JSONL(s)** — every prompt, response, and tool call from the run. Single file for Claude Code; main-agent file plus per-skill sub-agent files for Pi (see *Host detection and session locations* below).
+3. **The methodology contract** — the workspace's own methodology file and `(.claude|.pi)/agents/`, `(.claude/skills|skills)/`. These are the rules the run is being audited against. (Optional: the canonical templates in the parent `templates/` and `templates-pi/` dirs for cross-reference.)
 4. **Reference solution** (if available) — the known-correct answer to the problem, if it exists, can be documented in `references/`. This is a quality check, not a methodology requirement; the audit should be honest about whether the run produced a correct, partially correct, or incorrect answer, but the main focus is on the process rather than the outcome.
 
 The methodology promises:
@@ -30,24 +30,45 @@ The methodology promises:
 ## Inputs
 
 - `$workspace_path` (required): path to the workspace directory (e.g. `/Users/david/projects/theoretical-physics/physics-agent/qec`).
-- `$session_id` (optional): UUID of the Claude Code session. If omitted, auto-discover by listing `~/.claude/projects/<encoded>/*.jsonl` where `<encoded>` is `$workspace_path` with `/` replaced by `-`. Pick the largest or most-recent JSONL (largest usually corresponds to the substantive run).
+- `$session_id` (optional): UUID of the session. If omitted, auto-discover based on host (see below).
 
 If `$ARGUMENTS` is empty, ask the user for the workspace path.
 
-## Auto-discovery snippet (bash)
+## Host detection and session locations
+
+First detect whether the workspace was run under Claude Code or Pi by checking which methodology dir exists:
+
+- **Claude Code**: `<workspace>/.claude/` and `CLAUDE.md` present. Single main-agent JSONL at `~/.claude/projects/<encoded>/<uuid>.jsonl`. Sub-agent activity (Skill forks) is journaled inline in the same JSONL.
+- **Pi**: `<workspace>/.pi/` and `AGENTS.md` present. **Two locations** — main-agent JSONL at `~/.pi/agent/sessions/<encoded>/<timestamp>_<uuid>.jsonl` (one file per top-level session), and per-skill sub-agent JSONLs at `<workspace>/.pi/sessions/<skill-name>/run-N/session.jsonl`. Audit both: the main-agent file shows orchestration decisions, the sub-agent files show what each fork actually did.
+
+The encoded path uses `/` → `-`. Claude Code drops the leading `/`; Pi preserves it with a leading `--` (verify by `ls ~/.pi/agent/sessions/`).
+
+### Auto-discovery snippet (bash)
 
 ```bash
 WS="$workspace_path"
-ENCODED=$(echo "$WS" | sed 's|/|-|g')
-SESSION_DIR="$HOME/.claude/projects/${ENCODED}"
-if [ -n "$session_id" ]; then
-  JSONL="${SESSION_DIR}/${session_id}.jsonl"
-else
+if [ -d "$WS/.claude" ]; then
+  HOST=claude
+  ENCODED=$(echo "$WS" | sed 's|/|-|g')
+  SESSION_DIR="$HOME/.claude/projects/${ENCODED}"
+  if [ -n "$session_id" ]; then
+    JSONL="${SESSION_DIR}/${session_id}.jsonl"
+  else
+    JSONL=$(ls -t "${SESSION_DIR}"/*.jsonl 2>/dev/null | head -1)
+  fi
+  SUBAGENT_LOGS=""   # inline in $JSONL
+elif [ -d "$WS/.pi" ]; then
+  HOST=pi
+  # Pi encodes the workspace path with `/` → `-` and a `--` wrap on each side
+  # (e.g. `--Users-david-...-qec-pi--`). Glob rather than reconstruct.
+  WS_BASENAME=$(basename "$WS")
+  SESSION_DIR=$(ls -d "$HOME/.pi/agent/sessions/"*"${WS_BASENAME}"* 2>/dev/null | head -1)
   JSONL=$(ls -t "${SESSION_DIR}"/*.jsonl 2>/dev/null | head -1)
+  SUBAGENT_LOGS="$WS/.pi/sessions"   # per-skill <skill>/run-0/session.jsonl
 fi
 ```
 
-If `$JSONL` is missing or empty, do the analysis from the workspace + git history alone and note the gap in the report.
+If `$JSONL` is missing or empty, do the analysis from the workspace + git history alone and note the gap in the report. For Pi, also enumerate `$SUBAGENT_LOGS/*/run-*/session.jsonl` since those exist independently of the main-agent JSONL.
 
 ## Procedure
 
@@ -55,24 +76,39 @@ Execute in order. Use `jq`, `grep`, `git`, and `Read` liberally.
 
 ### Step 1 — Sanity checks and scope
 
-- Confirm `$workspace_path` exists and contains `CLAUDE.md`, `.claude/`, `problem.md`.
-- Read the workspace's `CLAUDE.md` and `.claude/agents/*.md` and `.claude/skills/*/SKILL.md` — these are the **actual prompts the run was using**. The audit's contract is what these say, not what the canonical drafts say. Note any divergence from the canonical drafts (if the open_dirac repo is locatable).
+- Confirm `$workspace_path` exists and contains `problem.md` plus the host's methodology file: `CLAUDE.md` + `.claude/` for Claude Code, or `AGENTS.md` + `.pi/` for Pi.
+- Read the workspace's methodology file and `(.claude|.pi)/agents/*.md` and `(.claude/skills|skills)/*/SKILL.md` — these are the **actual prompts the run was using**. The audit's contract is what these say, not what the canonical drafts say. Note any divergence from the canonical drafts.
 - `wc -l "$JSONL"` to size the transcript. If >100k lines, plan to sample.
 - Capture run shape: number of artefacts, number of commits, wall-clock from first to last JSONL timestamp.
 
 ### Step 2 — Trajectory reconstruction
 
-Extract all skill invocations and their returns from the JSONL.
+The schema differs by host — pick the right extractor.
+
+**Claude Code.** Tool calls are top-level events with `type=="tool_use"`; sub-agent dispatches use `name=="Skill"`; results are separate `tool_result` events. Sub-agent activity (Reads, Edits, etc. inside the fork) is journaled inline in the same JSONL.
 
 ```bash
 jq -c 'select(.type=="assistant" or .type=="user" or .type=="tool_use" or .type=="tool_result") | {type, ts:.timestamp, name:.tool_name, inp:.tool_input, out:.tool_result}' "$JSONL" > /tmp/events.jsonl
 ```
 
-For each `tool_use` with `name=="Skill"`:
+For each `tool_use` with `name=="Skill"`: capture `dispatch_ts`, skill name, `$ARGUMENTS`, the matching `tool_result` `return_ts` and content.
 
-- Capture timestamp (`dispatch_ts`), skill name, dispatched arguments (the actual `$ARGUMENTS` body and named args), and the matching `tool_result` timestamp (`return_ts`) and content.
+**Pi.** Tool calls are nested inside `message` events: `.message.content[].type == "toolCall"`. Sub-agent dispatches use `name == "subagent"`, with `.arguments.tasks[].agent` (e.g. `surveyor`, `deriver`), `.arguments.tasks[].task` (the dispatch brief), and `.arguments.sessionDir` (relative path to the per-skill sub-agent JSONL, e.g. `.pi/sessions/survey`). The sub-agent's full activity log is **in that per-skill JSONL**, not in the main-agent JSONL.
+
+```bash
+# Main-agent dispatches
+jq -c 'select(.type=="message") | .message.content[]? | select(.type=="toolCall" and .name=="subagent")' "$JSONL" > /tmp/dispatches.jsonl
+
+# For each dispatch, the sub-agent journal is at $WS/<sessionDir>/run-0/session.jsonl
+# (or run-1, run-2 for retries — list them)
+```
+
+For each Pi `subagent` call: capture `dispatch_ts` (from the enclosing message), agent name, task body, and read the per-skill `session.jsonl` (`$SUBAGENT_LOGS/<basename>/run-*/session.jsonl`) for the full sub-agent trajectory and the structured return.
+
+For both hosts, for each sub-agent return:
+
 - Wall-clock = `return_ts - dispatch_ts`.
-- Read the sub-agent's full return: was it the canonical Summary / Result / Flags schema, or did it invent sections?
+- Was the return the canonical `## Summary / ## Result / ## Flags` schema, or did it invent sections?
 - Identify main-agent activity *between* this return and the next skill dispatch: which files were edited, which user messages came in, which AskUserQuestion fired.
 
 Produce a numbered trajectory table.
@@ -129,7 +165,7 @@ If `notes/flags.md` is missing entirely, that is itself a finding — `init-phys
 
 ### Step 6 — Prompt-vs-behaviour delta
 
-Compare what the workspace's `.claude/agents/*.md` and `.claude/skills/*/SKILL.md` *claim* against what actually happened:
+Compare what the workspace's `(.claude|.pi)/agents/*.md` and `(.claude/skills|skills)/*/SKILL.md` *claim* against what actually happened:
 
 - For each agent's declared `tools:` list: did the sub-agent run any tool outside that list? (Possible — Claude Code may not strictly enforce.) Note for each agent.
 - For each agent's declared artefact heading structure (e.g. "writes `## Derivation`"): does the produced artefact actually use those headings? Mismatches are findings.
