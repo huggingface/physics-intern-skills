@@ -123,11 +123,9 @@ for d in $ARTEFACT_DIRS; do
   touch "$d/.gitkeep"
 done
 
-# Pi uses per-dispatch brief files under .briefs/ within derivations/ and computations/.
-if [[ "$HOST" == "pi" ]]; then
-  mkdir -p derivations/.briefs computations/.briefs
-  touch derivations/.briefs/.gitkeep computations/.briefs/.gitkeep
-fi
+# Per-dispatch brief files under .briefs/ within derivations/ and computations/.
+mkdir -p derivations/.briefs computations/.briefs
+touch derivations/.briefs/.gitkeep computations/.briefs/.gitkeep
 
 if [[ ! -f notes/flags.md ]]; then
   cat > notes/flags.md <<'EOF'

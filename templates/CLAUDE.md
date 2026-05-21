@@ -27,8 +27,10 @@ research_log.md     YOU own; primary durable state
 answer.md           written by /finalize
 derivations/        D-NNN.md           (sub-agent territory)
                     D-NNN_RM.md        sibling review file per /review on D-NNN (sub-agent territory)
+  .briefs/          D-NNN-brief.md     dispatch briefs YOU write before /derive
 computations/       C-NNN.{md,py}      (sub-agent territory)
                     C-NNN_RM.md        sibling review file per /review on C-NNN (sub-agent territory)
+  .briefs/          C-NNN-brief.md     dispatch briefs YOU write before /compute
 critiques/          CR-NNN.md          (sub-agent writes; YOU update ## Resolution + status)
 notes/              YOUR coordination scratch (incl. notes/flags.md — flag log)
 references/         <id>.{pdf,tex,md}
@@ -40,6 +42,7 @@ data/               numerical inputs/outputs of computations
 - `research_log.md` — primary durable state.
 - `notes/` — your coordination scratch, and the place to capture durable learnings worth carrying across the whole research arc. When you want to document something genuinely useful to remember that does not fit the `research_log.md` schema (Open Questions / Working Claims / Established Results / Dead Ends / Conventions / Sanity Checks) and is not a restatement of an existing artefact, drop a short `notes/<slug>.md` and cross-reference it from `research_log.md` where it applies. Unreferenced scratch is ephemeral.
 - `notes/flags.md` — per-flag disposition log (see §3 Integration loop).
+- `derivations/.briefs/D-NNN-brief.md`, `computations/.briefs/C-NNN-brief.md` — dispatch briefs you write before each `/derive` and `/compute` (see §3 Dispatch).
 - `critiques/CR-NNN.md` — `## Resolution` section and YAML `status:` field, after acting on findings.
 - `plan.md` — targeted edits as the work progresses: mark a step done, drop an obsolete step (with a one-line reason), retitle for clarity, or revise an upcoming step in light of a result. Re-invoke `/research-plan` only when the overall strategy shifts (new direction, big re-ordering). Present strategy-level changes to the user before continuing; targeted edits do not require approval.
 
@@ -60,7 +63,7 @@ You do NOT edit: `derivations/`, `computations/`, `survey.md`, `answer.md`, or `
 
 ## 3. Sub-agent loop
 
-You operate sub-agents in a cycle: **dispatch → wait for the structured return → integrate it → decide the next move**. The subsections below govern that cycle; the integration loop in the middle is its centrepiece.
+You operate sub-agents in a cycle: **write brief → dispatch → wait for the structured return → integrate it → decide the next move**. The subsections below govern that cycle; the integration loop in the middle is its centrepiece.
 
 ### Fork model & fresh context
 
@@ -70,11 +73,13 @@ Treat each sub-agent return as **provisional** until cross-checked. `survey.md` 
 
 ### Dispatch
 
-When dispatching `/derive`, `/compute`, or `/review`, include in the dispatch context only what the sub-agent needs — the target claim or artefact, relevant Established Results from `research_log.md`, relevant Conventions, and specific reference file paths. Sub-agents should not browse `references/` or other artefacts on their own; if they need more, they report back via `## Flags`.
+For each `/derive` and `/compute` dispatch, **write a brief file first** at `derivations/.briefs/D-NNN-brief.md` or `computations/.briefs/C-NNN-brief.md` (determine the next available `NNN` by globbing the parent directory). The brief contains only what the sub-agent needs — the target claim or artefact, relevant Established Results from `research_log.md`, relevant Conventions, and specific reference file paths. Then invoke `/derive D-NNN` or `/compute C-NNN` — the sub-agent reads the brief.
+
+For `/review`, pass the target ID and any small context (relevant Established Results, Conventions, specific references the target cites) inline as the skill's dispatched context — the reviewer reads the target file directly. Sub-agents should not browse `references/` or other artefacts on their own; if they need more, they report back via `## Flags`.
 
 **Standard flow.** After `/derive D-NNN` or `/compute C-NNN`, your next dispatch is **`/review` on that artefact** — do not chain another `/derive` or `/compute` without intervening review. The only exception is when the new dispatch is logically independent and reviews can be batched at the end; record the reasoning in `notes/flags.md` if so. Separately, run `/critique` every few state changes and before any major direction change.
 
-**No steering, no priors.** When dispatching any skill, pass the target and its named references — nothing else. Do not signal an expected answer or preferred direction on `/derive` and `/compute`, and do not leak prior reviewer verdicts, objections, or framing on follow-up `/review`s. The sub-agent follows the math; leaked priors collapse the fork into confirmation bias.
+**No steering, no priors.** When dispatching any skill, the brief (for `/derive` and `/compute`) or the inline context (for `/review` and `/critique`) carries the target and its named references — nothing else. Do not signal an expected answer or preferred direction on `/derive` and `/compute`, and do not leak prior reviewer verdicts, objections, or framing on follow-up `/review`s. The sub-agent follows the math; leaked priors collapse the fork into confirmation bias.
 
 **Second-opinion reviews.** On key results, refutations, or major critique findings that would change direction, dispatch a fresh `/review` to a different sub-agent. The no-priors rule above applies — target ID and cited references only.
 
