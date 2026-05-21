@@ -39,7 +39,7 @@ answer.md           written by /finalize
 derivations/        D-NNN.md            (sub-agent territory)
                     D-NNN_RM.md         sibling review file per /review on D-NNN (sub-agent territory)
   .briefs/          D-NNN-brief.md      dispatch briefs YOU write before /derive
-computations/       C-NNN.{md,py}       (sub-agent territory)
+computations/       C-NNN.{md,py,out}   (sub-agent territory; .out is captured stdout+stderr)
                     C-NNN_RM.md         sibling review file per /review on C-NNN (sub-agent territory)
   .briefs/          C-NNN-brief.md      dispatch briefs YOU write before /compute
 critiques/          CR-NNN.md           (sub-agent writes; YOU update ## Resolution + status)
