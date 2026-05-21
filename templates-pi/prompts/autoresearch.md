@@ -90,7 +90,11 @@ init:
     /start-research (from=autoresearch)  → integrate one-liner into context.
     if it reports problem.md still has placeholders: halt and ask user.
   determine entry point from start-from arg or file inspection.
-  initialise counters: iterations=0, derivations=0, state_changes_since_critique=0.
+  initialise counters:
+    iterations=0,
+    derivations=0,
+    state_changes_since_critique=0,         # any integrated sub-agent return
+    substantive_changes_since_critique=0.   # ER promotions and refutations only
 
 while not (terminated or halted):
   if entry_point == survey:
@@ -103,9 +107,16 @@ while not (terminated or halted):
     pick next dispatch from plan.md + research_log.md open work:
       if a derivation/computation is the next step:
         /derive or /compute  → integrate  → state_changes_since_critique++
+                                            (if integration promoted a Working Claim to ER: substantive_changes_since_critique++)
         /review on that artefact  → integrate  → state_changes_since_critique++
+                                                 (if verdict refuted, or integration promoted a Working Claim to ER: substantive_changes_since_critique++)
         if refuted: dispatch second /review; act per checks-and-balances.
-      if state_changes_since_critique >= 2: /critique  → disposition  → reset counter.
+      # Fire /critique only when there is something new to critique strategically.
+      # The substantive_changes guard prevents re-litigating hygiene findings after
+      # low-grade integration steps; the state_changes backstop catches stalled loops.
+      if (substantive_changes_since_critique >= 1 AND state_changes_since_critique >= 2)
+         OR state_changes_since_critique >= 6:
+        /critique  → disposition  → reset both counters.
       if a strategy-level rewrite is warranted:
         /critique (the mandatory second)  → disposition.
         log Pre-strategy-change gate decision.
