@@ -24,4 +24,10 @@ HOST = {
     # Capabilities are joined with ", " using tools_map.
     "agent_frontmatter_order": ["name", "description", "tools"],
     "agent_extra_fields": {},  # no extras for Claude
+    # File-backed values: each is loaded from hosts/<host>/<filename> at render
+    # time. Missing files yield an empty string — Claude has no preamble.md.
+    "file_backed": {
+        "preamble": "preamble.md",
+        "dispatch_example": "dispatch_example.md",
+    },
 }

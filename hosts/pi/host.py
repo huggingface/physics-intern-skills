@@ -25,4 +25,11 @@ HOST = {
     "agent_extra_fields": {
         "thinking": "high",
     },
+    # File-backed values: each is loaded from hosts/<host>/<filename> at render
+    # time. Missing files yield an empty string.
+    "file_backed": {
+        "preamble": "preamble.md",
+        "dispatch_example": "dispatch_example.md",
+        "skill_stub_template": "skill_stub.md.tmpl",
+    },
 }

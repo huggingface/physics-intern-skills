@@ -297,16 +297,10 @@ def render_host_extras(host: dict, target: Path) -> None:
 
 
 def load_host(host_name: str) -> dict:
-    """Load the host config dict and enrich with file-backed extras."""
+    """Load the host config dict and enrich with file-backed values."""
     host_mod = load_module(ROOT / "hosts" / host_name / "host.py", f"{host_name}_host")
     host = dict(host_mod.HOST)
-    # Optional file-backed values: load each if the file exists, else "".
-    file_backed = [
-        ("preamble", "preamble.md"),
-        ("dispatch_example", "dispatch_example.md"),
-        ("skill_stub_template", "skill_stub.md.tmpl"),
-    ]
-    for key, filename in file_backed:
+    for key, filename in host.pop("file_backed", {}).items():
         path = ROOT / "hosts" / host_name / filename
         host[key] = path.read_text() if path.exists() else ""
     return host
