@@ -24,7 +24,7 @@ The methodology promises:
 5. **Review is part of standard flow** — after `/derive` or `/compute`, the next dispatch should be `/review` (unless trivial; batching is permitted but must be recorded in `notes/flags.md`).
 6. **Integration loop**: every sub-agent return is followed by (i) `research_log.md` integration, (ii) per-flag disposition in `notes/flags.md`, (iii) any `plan.md` edits, (iv) **one commit** that bundles the artefact + main-agent edits. Sub-agents do not commit.
 7. **Main agent edits**: `research_log.md`, `notes/` (incl. `notes/flags.md`), `critiques/CR-NNN.md` (Resolution + status), and **targeted edits to `plan.md`** (mark done / drop / retitle / revise upcoming step). Strategy-level plan changes re-invoke `/research-plan`. Sub-agents own their artefacts.
-8. **Sub-agent return channel**: **only** `## Summary` / `## Result` / optional `## Flags`. Extra sections (e.g. `## Integration actions`, `## Recommended next steps`) violate the schema. Flags are proposals; the main agent must record the disposition in `notes/flags.md`.
+8. **Sub-agent return schema**: both (8a) the artefact file on disk and (8b) the reply-channel message (Claude Code `tool_result.content`, Pi `subagent` return body, Codex `wait_agent` reply / `last_task_message`) carry `## Summary` / `## Result` / `## Flags` (empty Flags rendered as `- (none)`). Extra sections (e.g. `## Integration actions`, `## Recommended next steps`) violate the schema. The two channels drift independently — usually the artefact is fine and the reply is prose. Flags are proposals; the main agent must record the disposition in `notes/flags.md`.
 9. **HITL for /research-plan** (strategy-level) — the sub-agent drafts, the main agent presents to the user for approval before continuing. Targeted plan edits by the main agent do not require user approval.
 
 ## Inputs
@@ -39,10 +39,10 @@ If `$ARGUMENTS` is empty, ask the user for the workspace path.
 First detect which host the workspace was run under by checking which methodology dir exists:
 
 - **Claude Code**: `<workspace>/.claude/` and `CLAUDE.md` present. Single main-agent JSONL at `~/.claude/projects/<encoded>/<uuid>.jsonl`. Sub-agent activity (Skill forks) is journaled inline in the same JSONL.
-- **Pi**: `<workspace>/.pi/` and `AGENTS.md` present. **Two locations** — main-agent JSONL at `~/.pi/agent/sessions/<encoded>/<timestamp>_<uuid>.jsonl` (one file per top-level session), and per-skill sub-agent JSONLs at `<workspace>/.pi/sessions/<skill-name>/run-N/session.jsonl`. Audit both: the main-agent file shows orchestration decisions, the sub-agent files show what each fork actually did.
-- **Codex**: `<workspace>/.codex/` and `AGENTS.md` present. Sessions are **date-organised, not workspace-organised** — JSONLs live at `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`. Discover the main-agent session by reading the first record (`SessionMeta`, `item.cwd`) of candidate files and matching against the workspace absolute path. Sub-agent activity (spawned via `spawn_agent`) lives in **separate JSONL files** under the same date tree, linked from the parent via `CollabAgentSpawnBegin` / `CollabAgentSpawnEnd` events carrying the child `thread_id`.
+- **Pi**: `<workspace>/.pi/` and `AGENTS.md` present. **Both main and sub-agent JSONLs live under `~/.pi/agent/sessions/`** — main-agent at `~/.pi/agent/sessions/<encoded>/<timestamp>_<uuid>.jsonl`, and per-sub-agent JSONLs **nested under a sibling dir with the same basename** (timestamp + uuid, no `.jsonl`): `~/.pi/agent/sessions/<encoded>/<timestamp>_<uuid>/<short-id>/run-N/session.jsonl` (one `<short-id>` subdir per dispatched sub-agent, `run-N` for retries). Legacy Pi placed sub-agent logs at `<workspace>/.pi/sessions/<skill>/run-N/` — fall back to that if the nested layout is empty. Audit both files: the main-agent shows orchestration decisions, the sub-agents show what each fork actually did. A sibling `<encoded>/subagent-artifacts/` dir holds `<short-id>_<agent>_<n>_{input,output,meta}` triples — useful as a fast summary parallel to the JSONLs.
+- **Codex**: `<workspace>/.codex/` and `AGENTS.md` present. Sessions are **date-organised, not workspace-organised** — JSONLs live at `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/rollout-<ts>-<uuid>.jsonl`. Discover the main-agent session by reading the first record of candidate files and matching `cwd` against the workspace absolute path. **Two schemas exist**: current Codex (`multi_agents_v2`, GPT-5) uses top-level `type=="response_item"` / `type=="event_msg"` / `type=="session_meta"` with `cwd` at `.payload.cwd`; legacy Codex uses `item.type` tags (`SessionMeta`/`FunctionCall`/`EventMsg`) with `cwd` at `.item.cwd`. Sub-agent activity lives in **separate JSONL files** under the same date tree; linkage is the child UUID inside `close_agent.arguments.target` (current) or `CollabAgentSpawnBegin.child_thread_id` (legacy), which matches the child JSONL's filename suffix.
 
-The encoded path uses `/` → `-`. Claude Code drops the leading `/`; Pi preserves it with a leading `--` (verify by `ls ~/.pi/agent/sessions/`). Codex does not encode the workspace path into the filename at all — filter by `SessionMeta.item.cwd` instead.
+The encoded path uses `/` → `-`. Claude Code drops the leading `/`; Pi preserves it with a leading `--` (verify by `ls ~/.pi/agent/sessions/`). Codex does not encode the workspace path into the filename at all — filter by `.payload.cwd` (current) / `.item.cwd` (legacy) instead.
 
 ### Auto-discovery snippet (bash)
 
@@ -65,24 +65,33 @@ elif [ -d "$WS/.pi" ]; then
   WS_BASENAME=$(basename "$WS")
   SESSION_DIR=$(ls -d "$HOME/.pi/agent/sessions/"*"${WS_BASENAME}"* 2>/dev/null | head -1)
   JSONL=$(ls -t "${SESSION_DIR}"/*.jsonl 2>/dev/null | head -1)
-  SUBAGENT_LOGS="$WS/.pi/sessions"   # per-skill <skill>/run-0/session.jsonl
+  # Current Pi nests sub-agent JSONLs under a sibling dir named after the full
+  # JSONL basename (timestamp + uuid, no .jsonl extension):
+  #   $SESSION_DIR/<timestamp>_<uuid>/<short-id>/run-N/session.jsonl
+  SUBAGENT_LOGS_NEW="${JSONL%.jsonl}"   # full basename, including timestamp prefix
+  SUBAGENT_LOGS_LEGACY="$WS/.pi/sessions"   # legacy per-skill layout
+  if compgen -G "${SUBAGENT_LOGS_NEW}/*/run-*/session.jsonl" >/dev/null 2>&1; then
+    SUBAGENT_LOGS="${SUBAGENT_LOGS_NEW}"   # contains <short-id>/run-N/session.jsonl
+  else
+    SUBAGENT_LOGS="${SUBAGENT_LOGS_LEGACY}"  # contains <skill>/run-N/session.jsonl
+  fi
 elif [ -d "$WS/.codex" ]; then
   HOST=codex
   # Codex sessions are date-organised under ~/.codex/sessions/YYYY/MM/DD/
-  # — not keyed by workspace. Filter candidates by matching SessionMeta.item.cwd
-  # against $WS. If $session_id is supplied, match it as a substring of the
-  # filename (the UUID is embedded there).
+  # — not keyed by workspace. Filter all candidates by cwd, then pick the most
+  # recently-modified. Current schema puts cwd at .payload.cwd; legacy at .item.cwd.
   SESSION_ROOT="${CODEX_HOME:-$HOME/.codex}/sessions"
   if [ -n "$session_id" ]; then
     JSONL=$(find "$SESSION_ROOT" -name "*${session_id}*.jsonl" 2>/dev/null | head -1)
   else
-    JSONL=$(find "$SESSION_ROOT" -name "rollout-*.jsonl" 2>/dev/null | while read -r f; do
-      cwd=$(head -1 "$f" 2>/dev/null | jq -r '.item.cwd // empty' 2>/dev/null)
+    matches=$(find "$SESSION_ROOT" -name "rollout-*.jsonl" 2>/dev/null | while read -r f; do
+      cwd=$(head -1 "$f" 2>/dev/null | jq -r '.payload.cwd // .item.cwd // empty' 2>/dev/null)
       [ "$cwd" = "$WS" ] && echo "$f"
-    done | xargs -I{} ls -t {} 2>/dev/null | head -1)
+    done)
+    JSONL=$(printf '%s\n' "$matches" | xargs ls -t 2>/dev/null | head -1)
   fi
-  # Sub-agent JSONLs are discovered from CollabAgentSpawn events in the main
-  # JSONL (each carries a child thread_id used as filename suffix).
+  # Sub-agent JSONLs are discovered from spawn/close events in the main JSONL
+  # (each carries a child UUID matching the per-child filename suffix).
   SUBAGENT_LOGS="$SESSION_ROOT"
 fi
 ```
@@ -124,20 +133,41 @@ jq -c 'select(.type=="message") | .message.content[]? | select(.type=="toolCall"
 
 For each Pi `subagent` call: capture `dispatch_ts` (from the enclosing message), agent name, task body, and read the per-skill `session.jsonl` (`$SUBAGENT_LOGS/<basename>/run-*/session.jsonl`) for the full sub-agent trajectory and the structured return.
 
-**Codex.** Each line is `{timestamp, item}`. The variant lives in `item.type` (the Rust `RolloutItem` enum, serialised as tagged JSON). Tool calls appear as `FunctionCall` items with `name` + `arguments` (the latter is a JSON-encoded string); results as `FunctionCallOutput` carrying `id` + `output`. Sub-agent dispatches appear as `EventMsg` items with `msg.type` in `CollabAgentSpawnBegin` / `CollabAgentSpawnEnd` / `CollabAgentInteractionBegin` / `CollabAgentInteractionEnd` — these carry the spawned `task_name`, `agent_type`, and child `thread_id`. The sub-agent's full activity is in a **separate** JSONL file under `${CODEX_HOME:-~/.codex}/sessions/YYYY/MM/DD/` whose filename contains the child `thread_id`; find it by globbing.
+**Codex.** Two schemas exist — sniff before extracting:
 
 ```bash
-# Main-agent tool calls (verify exact tag names against your Codex version)
-jq -c 'select(.item.type=="FunctionCall") | {ts:.timestamp, name:.item.name, args:.item.arguments}' "$JSONL" > /tmp/calls.jsonl
-
-# Sub-agent spawn events
-jq -c 'select(.item.type=="EventMsg" and (.item.msg.type | startswith("CollabAgent")))' "$JSONL" > /tmp/dispatches.jsonl
-
-# For each CollabAgentSpawnBegin, the child thread_id locates the per-agent JSONL:
-#   find "${CODEX_HOME:-$HOME/.codex}/sessions" -name "*<child_thread_id>*.jsonl"
+jq -r '.type // .item.type' "$JSONL" 2>/dev/null | sort -u | head
 ```
 
-The exact JSON tag for `RolloutItem` variants depends on Codex version — `item.type == "FunctionCall"` here is the tagged-enum serialisation; older builds may use `function_call`. If the `jq` above returns nothing, inspect `head -3 "$JSONL" | jq .` to confirm the actual tag and adjust.
+If the top-level keys are `response_item` / `event_msg` / `session_meta` (lowercase tagged), the run is on **current Codex** (`multi_agents_v2`, GPT-5). If they're `SessionMeta` / `FunctionCall` / `EventMsg` (PascalCase under `.item.type`), it's **legacy Codex** — fall through to the legacy `jq` at the bottom.
+
+**Current schema.** Main-agent tool calls split across two `payload.type` values:
+
+- `function_call` — used by `exec_command`, `spawn_agent`, `wait_agent`, `close_agent`, and a few others.
+- `custom_tool_call` — used by `apply_patch` (a freeform Lark-grammar tool, distinct from `function_call`).
+
+The current tool inventory in `commons/` / `hosts/codex/` exposes essentially: `exec_command` (shell — Codex's **only file-read primitive**, used via `sed -n`, `cat`, `rg`, `ls`, `find`, `git`), `apply_patch` (the dedicated edit tool), and the `spawn_agent` / `wait_agent` / `close_agent` triple for sub-agent orchestration. **There is no native `read_file` / `edit_file` / `write_file` / `grep` / `glob`** — every file read is a shell call.
+
+```bash
+# All main-agent tool calls (both payload kinds)
+jq -c 'select(.type=="response_item" and (.payload.type=="function_call" or .payload.type=="custom_tool_call"))
+       | {ts:.timestamp, name:.payload.name, kind:.payload.type, args:.payload.arguments}' "$JSONL" > /tmp/calls.jsonl
+
+# Sub-agent dispatch lifecycle (spawn / wait / close)
+jq -c 'select(.type=="response_item" and .payload.type=="function_call"
+              and (.payload.name=="spawn_agent" or .payload.name=="wait_agent" or .payload.name=="close_agent"))' "$JSONL" > /tmp/dispatches.jsonl
+
+# For each close_agent, the child UUID locates the per-agent JSONL:
+#   target=$(echo "$args" | jq -r '.target')
+#   find "${CODEX_HOME:-$HOME/.codex}/sessions" -name "*${target}*.jsonl"
+```
+
+**Legacy schema** (older Codex builds). Each line is `{timestamp, item}` with `item.type` in `FunctionCall` / `FunctionCallOutput` / `EventMsg`. Sub-agent dispatches appear as `EventMsg` items with `msg.type` in `CollabAgentSpawnBegin` / `CollabAgentSpawnEnd` etc., carrying the child `thread_id`. The current `jq` above will return nothing on legacy — use:
+
+```bash
+jq -c 'select(.item.type=="FunctionCall") | {ts:.timestamp, name:.item.name, args:.item.arguments}' "$JSONL" > /tmp/calls.jsonl
+jq -c 'select(.item.type=="EventMsg" and (.item.msg.type | startswith("CollabAgent")))' "$JSONL" > /tmp/dispatches.jsonl
+```
 
 For all three hosts, for each sub-agent return:
 
@@ -163,11 +193,11 @@ End-of-run `git status` is the ground truth for which files are uncommitted. Any
 
 ### Step 4 — Methodology adherence (rule-by-rule)
 
-For each of the 9 rules above, decide **pass / partial / fail** with specific evidence. Don't be charitable. Cite JSONL line numbers (or `jq` queries) and commit hashes.
+For each rule above (Rule 8 split into 8a artefact + 8b reply channel — 10 checks total), decide **pass / partial / fail** with specific evidence. Don't be charitable. Cite JSONL line numbers (or `jq` queries) and commit hashes.
 
 Mechanical checks:
 
-- **Rule 1 (coordinator-only)**: count main-agent tool calls by type (`jq` for `tool_use` events outside skill-fork contexts). Flag any main-agent Write/Edit to `derivations/`, `computations/`, `critiques/CR-NNN.md` `## Findings`, `survey.md`, `answer.md`. Also scan main-agent text turns for inline derivations or substantive maths/code — heuristic: text turn with multiple equations not framed as quoted sub-agent output.
+- **Rule 1 (coordinator-only)**: count main-agent tool calls by type. Flag any main-agent Write/Edit to `derivations/`, `computations/`, `critiques/CR-NNN.md` `## Findings`, `survey.md`, `answer.md`. Also scan main-agent text turns for inline derivations or substantive maths/code — heuristic: text turn with multiple equations not framed as quoted sub-agent output. **Tool-count caveat**: raw tool counts are *not comparable across hosts* — Claude Code has dedicated `Read`/`Edit`/`Write`, Pi has structured `read`/`edit`/`write`, Codex has only `exec_command` + `apply_patch` (so every file read is a `sed -n` shell). For Codex, classify each `exec_command` by command stem (`sed`/`cat`/`rg`/`find`/`ls`/`git`/`mkdir`/`python`/`curl`) before counting — a `git commit` and a `sed -n` view are not the same logical operation. Report both the raw count and the normalised count of **logical operations** (file-reads, file-writes, sub-agent dispatches, commits, HITL prompts).
 - **Rule 2 (research_log invariants)**: parse the final `research_log.md`. Check:
   - Canonical section order.
   - Every `W-` and `E-` entry has a `sources:` line.
@@ -179,7 +209,8 @@ Mechanical checks:
 - **Rule 5 (review-after-derive/compute)**: for every `D-NNN.md` and `C-NNN.md`, check that **at least one** of the following holds: (i) a `## Reviews` heading exists in the target (legacy convention), or (ii) a sibling `D-NNN_R*.md` / `C-NNN_R*.md` file exists (current convention). Missing both → flag with the artefact ID. If review was batched (multiple `/derive` or `/compute` before `/review`), check `notes/flags.md` for the recorded reasoning.
 - **Rule 6 (integration loop / commits)**: tally from step 3. Each skill invocation should produce one commit that bundles the sub-agent's artefact, the `research_log.md` update, the `notes/flags.md` dispositions, and any `plan.md` edits. Missing commits, or commits that touch only the artefact without the main-agent edits, → flag.
 - **Rule 7 (main-agent edit scope)**: parse all main-agent `Edit`/`Write` tool calls. Allowed paths: `research_log.md`, `notes/*` (incl. `notes/flags.md`), `critiques/CR-NNN.md` (Resolution/status only — not the original findings), `plan.md` (targeted edits: mark done, drop, retitle, revise upcoming step). Edits to `derivations/` (incl. `D-NNN_R*.md` review files), `computations/` (incl. `C-NNN_R*.md`), `survey.md`, `answer.md`, legacy `## Reviews` sections in target files, or wholesale rewrites of `plan.md` → finding.
-- **Rule 8 (return schema)**: for each tool_result, check the structure. Sections other than `## Summary`, `## Result`, `## Flags` are findings.
+- **Rule 8a (artefact schema)**: every artefact file (`survey.md`, `D-NNN.md`, `C-NNN.md`, `D/C-NNN_R*.md`, `CR-NNN.md`, `answer.md`) should match the agent's declared heading structure — usually `## Summary` / `## Result` / `## Flags` (critiques: `## Findings` / `## Resolution`). Extra sections (`## Recommended next steps`, etc.) are findings. Check by `grep -E '^## ' <artefact>`.
+- **Rule 8b (reply-channel schema)**: the sub-agent's **reply message** — the body the main agent actually sees inline as the dispatch return — should *also* be the canonical `## Summary` / `## Result` / `## Flags` block, not a narrative summary. Locations: Claude Code → `tool_result.content` in the main JSONL; Pi → the `subagent` tool's return body (also visible at the head of the per-sub-agent `session.jsonl`); Codex → the `wait_agent` reply / `last_task_message`. Schema drift on 8b is **independent** of 8a — artefacts are usually fine; replies are where drift lives, and it causes flags to be silently dropped because the main agent integrates from the reply, not the file. Empty Flags should be `## Flags\n- (none)\n`, not omitted.
 - **Rule 9 (HITL for /research-plan)**: between a strategy-level `/research-plan` return and the next non-research-plan skill dispatch, look for `AskUserQuestion`, user message, or main-agent text presenting the plan for approval. Missing → flag. Targeted plan edits by the main agent (not via `/research-plan`) do not require approval; do not flag those.
 
 ### Step 5 — Flag-disposition trace
@@ -205,6 +236,7 @@ Compare what the workspace's `(.claude|.pi|.codex)/agents/*` (Markdown / Markdow
 - For each agent's declared artefact heading structure (e.g. "writes `## Derivation`"): does the produced artefact actually use those headings? Mismatches are findings.
 - For each agent's "Do NOT" constraints: any violations?
 - For each agent's "report back via `## Flags` rather than expanding scope": any cases where the sub-agent silently expanded scope (Read other artefacts, browsed `references/`)?
+- **Brief priors-leakage** (main-agent side): scan the dispatch briefs (the `$ARGUMENTS` / `task` / `prompt` body the main agent passes to `/derive`, `/compute`, `/review`, `/critique`) for explicit numeric targets ("This should give 16/25"), pre-stated sub-claim values ("Sub-claim: u_1 = 7"), or worked hints. The sub-agent is supposed to discover those independently — pre-stating them defeats the cross-check. This is distinct from Rule 4 (leaking prior **reviews**); this leaks author-supplied **priors**. Flag with the brief file path or JSONL event ID and quote the offending line.
 
 ### Step 7 — Substantive quality (lighter pass)
 
@@ -233,7 +265,30 @@ Write to `/tmp/audit-<workspace-basename>.md`. Structure:
 <numbered findings; each with file:line, current text, observed behaviour, proposed fix>
 
 ## Workflow observations
-<wall-clocks per skill; main-agent tool counts; backtracks; HITL count>
+
+### Per-dispatch wall-clock
+
+| # | Skill | Agent | Dispatched at | Returned at | Duration | Artefact |
+|---|---|---|---|---|---|---|
+
+### Main-agent tool inventory
+
+Report logical operations (comparable across hosts) and raw tool calls (host-dependent) separately.
+
+| Logical operation | Count |
+|---|---|
+| Sub-agent dispatches | |
+| File reads | |
+| File writes/edits | |
+| Commits | |
+| Shell (other) | |
+| HITL prompts | |
+
+| Raw tool / command stem | Count | Notes |
+|---|---|---|
+
+### Backtracks, retries, recoveries
+<list any: deriver re-runs, apply_patch retries, `close_agent` thread-limit recoveries, HITL clarifications, sub-agent timeouts>
 
 ## Substantive quality
 <short prose: does answer.md actually answer problem.md; are artefacts well-formed>
@@ -257,7 +312,9 @@ Then return a tight summary (under 800 words) to the caller covering:
 - **"Single-context ER"** = the union of cited artefact files spans ≤1 dispatch context, AND the entry does not record an explicit "only one approach available because …" reason. Multiple paths inside one `C-NNN.md` or one `D-NNN.md` is still one context.
 - **"Missing review"** = an ER-cited source artefact (`D-NNN.md` or `C-NNN.md`) has neither a `## Reviews` heading (legacy) nor any sibling `_R*.md` file (current).
 - **"Scope expansion"** = a sub-agent Read a file outside its dispatch (`grep` the JSONL for `Read` tool calls inside the fork; cross-check against what was named in the dispatch).
-- **"Schema drift"** = a sub-agent return contains sections other than `## Summary`, `## Result`, `## Flags` (e.g. `## Integration actions`, `## Recommended next steps`).
+- **"Artefact schema drift"** (Rule 8a) = the on-disk artefact file (`D-NNN.md`, etc.) contains sections outside the agent's declared schema, or is missing the canonical `## Summary` / `## Result` / `## Flags` block.
+- **"Reply-channel schema drift"** (Rule 8b) = the sub-agent's **reply message** (what the main agent sees inline as the dispatch return) is narrative prose without `## Summary` / `## Result` / `## Flags` headers — even when the on-disk artefact is canonical. Most common on Codex (`wait_agent` reply) and on long-artefact returns in Claude Code. Causes flags to be silently dropped because the main agent integrates from the reply, not the file.
+- **"Brief priors-leakage"** = the main agent's dispatch brief pre-states the expected answer numerically ("This should give 16/25") or names a sub-claim's value. Distinct from Rule 4 — Rule 4 is about leaking prior **reviews**; this is leaking author-supplied **priors**.
 
 ## Constraints
 
