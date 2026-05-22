@@ -3,7 +3,6 @@ name: review
 description: Adversarial review of a derivation (D-NNN) or computation (C-NNN), in a fresh-context reviewer sub-agent that sees only the target's # Task and ## Derivation / ## Computation — never prior reviews.
 agent: reviewer
 arguments_hint: <D-NNN | C-NNN target id>
-dispatch_kind: direct
 ---
 
 Run an independent adversarial review on a target artefact. The `reviewer` sub-agent writes a sibling review file `derivations/D-NNN_RM.md` (or `computations/C-NNN_RM.md`) carrying the verdict (`confirmed` / `refuted` / `inconclusive`). Each review starts fresh — no prior verdicts are passed.

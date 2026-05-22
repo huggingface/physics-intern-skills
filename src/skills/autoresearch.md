@@ -2,7 +2,6 @@
 name: autoresearch
 description: Run the research pipeline autonomously without human-in-the-loop gates. Can only be invoked by the user.
 arguments_hint: "[max-iterations=N] [max-derivations=N] [start-from=survey|plan|loop|finalize]"
-dispatch_kind: main
 top_level_cli: false
 ---
 

@@ -3,12 +3,9 @@ name: derive
 description: Analytical derivation for a target claim or open question, in a fresh-context sub-agent that uses only what is dispatched via a brief file. Writes derivations/D-NNN.md with the derivation, assumptions, and sanity checks.
 agent: deriver
 arguments_hint: <target claim>
-dispatch_kind: brief
 artefact_kind: D-NNN
-artefact_dir: derivations
 brief: derivations/.briefs/D-NNN-brief.md
 output_pattern: derivations/D-NNN.md
-followup: review
 ---
 
 Perform an analytical derivation. The `deriver` sub-agent works only from what you put in a brief file plus the workspace `problem.md`. You write the brief; you dispatch; you integrate.

@@ -3,7 +3,6 @@ name: finalize
 description: Synthesise answer.md — the final research deliverable — from Established Results and supporting artefacts. Runs in a fresh-context finalizer sub-agent.
 agent: finalizer
 arguments_hint: "[optional emphasis from main agent]"
-dispatch_kind: direct
 output_pattern: answer.md
 ---
 

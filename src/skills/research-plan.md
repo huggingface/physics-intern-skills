@@ -3,7 +3,6 @@ name: research-plan
 description: Draft or update plan.md — the numbered research strategy. Forks a fresh-context planner sub-agent. HITL after return.
 agent: planner
 arguments_hint: "[optional feedback or scope hints]"
-dispatch_kind: direct
 output_pattern: plan.md
 ---
 

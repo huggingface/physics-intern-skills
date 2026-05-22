@@ -2,7 +2,6 @@
 name: start-research
 description: One-time bootstrap from problem.md — extract a one-line summary and substitute the {{PROBLEM_ONELINER}} placeholders in the workspace doc and research_log.md.
 arguments_hint: ""
-dispatch_kind: main
 ---
 
 The workspace was bootstrapped by `init-physics-intern.sh` and the user has (hopefully) edited `problem.md`. Your job is the small, one-time prep step that turns the skeleton into a ready-to-go workspace.

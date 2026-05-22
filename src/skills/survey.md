@@ -3,7 +3,6 @@ name: survey
 description: Research-landscape survey for the problem in problem.md. Forks a fresh-context surveyor sub-agent.
 agent: surveyor
 arguments_hint: "[optional user hints]"
-dispatch_kind: direct
 output_pattern: survey.md
 ---
 

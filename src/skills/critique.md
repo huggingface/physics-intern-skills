@@ -3,9 +3,7 @@ name: critique
 description: Strategic critique of the overall research state, in a fresh-context critic sub-agent. Identifies strategic drift, plan-viability issues, coherence problems, under-sourced claims, citation gaps.
 agent: critic
 arguments_hint: "[optional focus from main agent]"
-dispatch_kind: critique
 artefact_kind: CR-NNN
-artefact_dir: critiques
 output_pattern: critiques/CR-NNN.md
 ---
 

@@ -3,12 +3,9 @@ name: compute
 description: Symbolic + numerical computation for a target claim, in a fresh-context sub-agent that uses only what is dispatched via a brief file. SymPy + NumPy by default. Symbolic and numerical run together when feasible; disagreement is flagged.
 agent: computer
 arguments_hint: <target claim>
-dispatch_kind: brief
 artefact_kind: C-NNN
-artefact_dir: computations
 brief: computations/.briefs/C-NNN-brief.md
 output_pattern: computations/C-NNN.md
-followup: review
 ---
 
 Perform symbolic + numerical computation. The `computer` sub-agent writes a script, executes it, and captures the output; you write the brief and integrate the result.
