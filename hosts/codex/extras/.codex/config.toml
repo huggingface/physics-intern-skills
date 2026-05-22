@@ -1,0 +1,15 @@
+# PhysicsIntern workspace Codex config.
+#
+# Codex only loads this file after the user marks the project as trusted.
+# The first time you launch `codex` in this directory, accept the trust
+# prompt; subsequent launches will pick up the sandbox settings and the
+# [agent_roles.*] registrations below.
+#
+# The [agent_roles.*] blocks at the bottom of this file are appended by the
+# PhysicsIntern renderer (one per sub-agent role).
+
+sandbox_mode = "workspace-write"
+web_search = "cached"
+
+[sandbox_workspace_write]
+network_access = true

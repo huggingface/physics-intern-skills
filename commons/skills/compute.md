@@ -24,7 +24,7 @@ Perform symbolic + numerical computation. The `computer` sub-agent writes a scri
 
    **No steering, no priors.** Do not signal an expected answer or preferred direction.
 
-3. **Dispatch the `computer` sub-agent**, passing the brief path and the output path. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The computer reads the brief, follows its role definition in `{{agents_dir}}/computer.md`, runs both symbolic and numerical paths together when feasible (flagging disagreement), writes `computations/C-NNN.py` and `computations/C-NNN.md`, and captures stdout+stderr to `computations/C-NNN.out`.
+3. **Dispatch the `computer` sub-agent**, passing the brief path and the output path. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The computer reads the brief, follows its role definition in `{{agents_dir}}/computer{{agent_ext}}`, runs both symbolic and numerical paths together when feasible (flagging disagreement), writes `computations/C-NNN.py` and `computations/C-NNN.md`, and captures stdout+stderr to `computations/C-NNN.out`.
 
 4. **Run the integration loop** when the computer returns:
    - Read `## Summary` / `## Result` / `## Flags` from `computations/C-NNN.md`.

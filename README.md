@@ -28,7 +28,7 @@ claude                                          # then in Claude Code:
 
 The bootstrap script renders the workspace files from `commons/` + `hosts/<host>/`, scaffolds `problem.md` if missing, creates the artefact directories (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`), seeds `notes/flags.md`, initialises git, and makes the first commit. Re-running on an existing workspace prompts for a reset (preserves `problem.md`, wipes everything else).
 
-The script also accepts `--host=pi` for the Pi target — same methodology, different conventions: `AGENTS.md` instead of `CLAUDE.md`, sub-agent dispatch via Pi's `subagent` tool, etc. Launch sequence for Pi is `pi install -l .` then `pi`. See §Hosts below.
+The script also accepts `--host=pi` (Pi) and `--host=codex` (OpenAI Codex CLI) — same methodology, different conventions: `AGENTS.md` instead of `CLAUDE.md`, sub-agent dispatch via Pi's `subagent` tool or Codex's `spawn_agent` + `wait_agent`. Launch sequence for Pi is `pi install -l .` then `pi`; Codex is just `codex` (with a project-trust prompt on first run). See §Hosts below.
 
 
 ## Repo layout
@@ -66,15 +66,20 @@ physics-intern/
 │   │   ├── host.toml                  # workspace_doc, tools_map, frontmatter shape
 │   │   ├── dispatch_example.md        # Task tool syntax example
 │   │   └── extras/.claude/settings.json
-│   └── pi/
-│       ├── host.toml
-│       ├── preamble.md                # tool-discipline preamble injected at top
-│       ├── dispatch_example.md        # subagent JSON example
-│       ├── skill_stub.md.tmpl         # layout for Pi's skills/<name>/SKILL.md stubs
-│       ├── gitignore.extra            # node_modules/
-│       └── extras/
-│           ├── package.json
-│           └── .pi/settings.json
+│   ├── pi/
+│   │   ├── host.toml
+│   │   ├── preamble.md                # tool-discipline preamble injected at top
+│   │   ├── dispatch_example.md        # subagent JSON example
+│   │   ├── skill_stub.md.tmpl         # layout for Pi's skills/<name>/SKILL.md stubs
+│   │   ├── gitignore.extra            # node_modules/
+│   │   └── extras/
+│   │       ├── package.json
+│   │       └── .pi/settings.json
+│   └── codex/
+│       ├── host.toml                  # agent_format="toml"; tools collapse onto shell_command + apply_patch
+│       ├── preamble.md                # Codex tool discipline (shell_command, apply_patch, spawn_agent, wait_agent)
+│       ├── dispatch_example.md        # spawn_agent + wait_agent example
+│       └── extras/.codex/config.toml  # sandbox + web_search; renderer appends [agent_roles.*] blocks
 ├── .claude/skills/
 │   └── investigate-run/               # repo-level audit skill
 ├── workspaces/                        # sample workspaces — methodology test runs and real research
@@ -124,7 +129,7 @@ The unit of change is usually one of:
 - **`init-physics-intern.sh`** and **`commons/research_log.md`** — for new files seeded into the workspace skeleton, or new placeholders.
 - **`.claude/skills/investigate-run/SKILL.md`** — when the methodology contract changes, the audit rules need to follow.
 
-Changes propagate to **new** workspaces on the next `init-physics-intern.sh` run. Existing workspaces carry the methodology baked into their `.claude/` or `.pi/` at the time they were created — there is no upgrade skill, so older workspaces are patched by hand if needed.
+Changes propagate to **new** workspaces on the next `init-physics-intern.sh` run. Existing workspaces carry the methodology baked into their `.claude/`, `.pi/`, or `.codex/` (+ `.agents/`) at the time they were created — there is no upgrade skill, so older workspaces are patched by hand if needed.
 
 After making prompt changes, the validation loop is: bootstrap a fresh workspace from `references/` (pick a benchmark problem), run it through, then `investigate-run` against the resulting workspace + session JSONL, compare findings to prior runs.
 
@@ -156,11 +161,15 @@ Run after a workspace session to see where the methodology slipped and which pro
 
 ## Hosts
 
-Two hosts are supported today; both render from the same `commons/` tree.
+Three hosts are supported today; all render from the same `commons/` tree.
 
 - **Claude Code** (`--host=claude`, default). Workspace doc at `CLAUDE.md`, sub-agent prompts at `.claude/agents/<role>.md`, skills at `.claude/skills/<name>/SKILL.md`. Sub-agent dispatch via the `Task` tool with `subagent_type` set to the agent name.
 
 - **Pi** (`--host=pi`). Workspace doc at `AGENTS.md`, sub-agent prompts at `.pi/agents/<role>.md`, project settings at `.pi/settings.json` (declares `pi-subagents` + `pi-web-access` packages), skill/prompt directories declared in `package.json` under the `pi:` block. Skills are split Pi-style into thin `skills/<name>/SKILL.md` stubs (generated) and full workflow files in `prompts/<name>.md` (rendered with a Pi tool-discipline preamble). Launch sequence after `init-physics-intern.sh --host=pi`: `pi install -l .`, then `pi`.
+
+- **Codex CLI** (`--host=codex`). Workspace doc at `AGENTS.md` (shared with Pi — the init script disambiguates by `.pi/` vs `.codex/` directory). Sub-agent roles are **TOML files** at `.codex/agents/<role>.toml`, registered as `[agent_roles.<role>]` blocks in `.codex/config.toml`. Skills at `.agents/skills/<name>/SKILL.md` (Claude-style single-file layout). Sub-agent dispatch via `spawn_agent` + `wait_agent` (`fork_turns: "none"` for clean context). Launch: just `codex`, then accept the project-trust prompt on first run so `.codex/config.toml` (and the `agent_roles` registrations) actually load.
+
+  Note: `spawn_agent` and `wait_agent` live in Codex's `multi_agents_v2` namespace, which is under active OpenAI development; if dispatch breaks after a Codex upgrade, `hosts/codex/dispatch_example.md` is the single point of truth to update.
 
 ## Next Steps
 
@@ -172,4 +181,4 @@ Planned but not implemented: `mcp-arxiv` (arxiv search/fetch), `mcp-papers` (ind
 
 ### Other hosts
 
-Codex, OpenCode, Gemini CLI, Goose — not implemented yet. Each would be a new `hosts/<host>/` folder with `host.toml` (tools_map, frontmatter shape, paths), `dispatch_example.md`, and any host-specific extras. Codex is the closest structural cousin to Claude Code and would likely port mechanically once we agree on its frontmatter conventions.
+OpenCode, Gemini CLI, Goose — not implemented yet. Each would be a new `hosts/<host>/` folder with `host.toml` (tools_map, frontmatter shape, paths), `dispatch_example.md`, and any host-specific extras.

@@ -1,0 +1,41 @@
+# Codex CLI host configuration.
+#
+# The renderer reads this file to know how to map capabilities to tool names,
+# where to write rendered files, and how to shape host-specific frontmatter.
+#
+# Codex differs from Claude/Pi in two structural ways: sub-agent roles are
+# TOML files (registered under [agent_roles.*] in .codex/config.toml) rather
+# than YAML-frontmatter markdown, and the tool surface collapses several
+# capabilities into shell_command + apply_patch. See preamble.md.
+
+name = "codex"
+workspace_doc = "AGENTS.md"
+agents_dir = ".codex/agents"
+agent_ext = ".toml"
+skills_dir = ".agents/skills"
+
+# Codex agent role files are TOML, not YAML+markdown — the renderer routes
+# accordingly. Triggers the TOML emit path in render.py.
+agent_format = "toml"
+
+# Skills frontmatter ordering for the single-file SKILL.md layout (Claude-style).
+# Reused via the same code path as Claude.
+
+# tools_map is declared for symmetry but is unused at render time: Codex roles
+# do not carry a per-role tools allowlist (permissions are sandbox-scoped). It
+# is kept here as documentation of which capability lands on which Codex tool.
+[tools_map]
+file_read = "shell_command"      # via cat / head — no native read tool
+file_write = "apply_patch"
+file_edit = "apply_patch"
+shell = "shell_command"
+glob = "shell_command"           # via find / ls
+grep = "shell_command"           # via grep / rg
+web_search = "web_search"        # hosted tool, toggled in config.toml
+web_fetch = "shell_command"      # via curl — no native fetch
+
+# File-backed values: each is loaded from hosts/<host>/<filename> at render
+# time.
+[file_backed]
+preamble = "preamble.md"
+dispatch_example = "dispatch_example.md"

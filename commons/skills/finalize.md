@@ -12,7 +12,7 @@ Synthesise the final answer. The `finalizer` sub-agent reads `research_log.md`, 
 
 1. **Sanity-check before dispatch.** The Established Results in `research_log.md` should carry the answer. If they don't — if the answer depends on Working Claims that haven't been promoted — pause and tell the user. `/finalize` will still produce an honest partial answer, but the user should know.
 
-2. **Dispatch the `finalizer` sub-agent**, passing any optional emphasis (areas to highlight, audience hints, length guidance) inline. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The finalizer follows its role definition in `{{agents_dir}}/finalizer.md`, traces citations into the relevant artefacts and references, and writes `./answer.md`. The structured `## Summary` / `## Result` / `## Flags` goes at the top of `answer.md`.
+2. **Dispatch the `finalizer` sub-agent**, passing any optional emphasis (areas to highlight, audience hints, length guidance) inline. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The finalizer follows its role definition in `{{agents_dir}}/finalizer{{agent_ext}}`, traces citations into the relevant artefacts and references, and writes `./answer.md`. The structured `## Summary` / `## Result` / `## Flags` goes at the top of `answer.md`.
 
 3. **Run the integration loop** when the finalizer returns:
    - Read `## Summary` / `## Result` / `## Flags` from `answer.md`.

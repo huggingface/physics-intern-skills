@@ -19,7 +19,7 @@ Run an independent adversarial review on a target artefact. The `reviewer` sub-a
 
    **No priors.** Do not leak prior reviewer verdicts, objections, or framing for follow-up reviews on the same target. Target file path and named references only.
 
-3. **Dispatch the `reviewer` sub-agent**, passing the target file path inline plus the cross-check context. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The reviewer reads the target file in full, does NOT read any sibling `_R*.md` review files, forms an independent verdict, computes its own output path (`derivations/D-NNN_R<M>.md` or `computations/C-NNN_R<M>.md` where `M = (count of existing matching siblings) + 1`), and writes the verdict file there with YAML frontmatter and prose body per `{{agents_dir}}/reviewer.md`.
+3. **Dispatch the `reviewer` sub-agent**, passing the target file path inline plus the cross-check context. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The reviewer reads the target file in full, does NOT read any sibling `_R*.md` review files, forms an independent verdict, computes its own output path (`derivations/D-NNN_R<M>.md` or `computations/C-NNN_R<M>.md` where `M = (count of existing matching siblings) + 1`), and writes the verdict file there with YAML frontmatter and prose body per `{{agents_dir}}/reviewer{{agent_ext}}`.
 
 4. **Second-opinion reviews** are separate dispatches. On key results, refutations, or major critique findings that would change direction, dispatch a fresh `/review` to a different sub-agent without leaking the prior verdict. The second review will automatically claim the next `_R<M+1>` slot.
 

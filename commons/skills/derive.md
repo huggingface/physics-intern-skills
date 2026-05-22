@@ -23,7 +23,7 @@ Perform an analytical derivation. The `deriver` sub-agent works only from what y
 
    **No steering, no priors.** Do not signal an expected answer or preferred direction.
 
-3. **Dispatch the `deriver` sub-agent**, passing the brief path and the output path. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The deriver reads the brief, follows its role definition in `{{agents_dir}}/deriver.md`, and writes `derivations/D-NNN.md` with the structured `## Summary` / `## Result` / `## Flags` at the top.
+3. **Dispatch the `deriver` sub-agent**, passing the brief path and the output path. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The deriver reads the brief, follows its role definition in `{{agents_dir}}/deriver{{agent_ext}}`, and writes `derivations/D-NNN.md` with the structured `## Summary` / `## Result` / `## Flags` at the top.
 
 4. **Run the integration loop** when the deriver returns:
    - Read `## Summary` / `## Result` / `## Flags` from `derivations/D-NNN.md`.

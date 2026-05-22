@@ -37,11 +37,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# Validate host selection — only claude and pi are supported.
+# Validate host selection — claude, pi, codex are supported.
 case "$HOST" in
-  claude|pi) ;;
+  claude|pi|codex) ;;
   *)
-    echo "Error: --host must be 'claude' or 'pi' (got '$HOST')" >&2
+    echo "Error: --host must be 'claude', 'pi', or 'codex' (got '$HOST')" >&2
     exit 1 ;;
 esac
 
@@ -56,13 +56,17 @@ mkdir -p "$TARGET_DIR"
 cd "$TARGET_DIR"
 TARGET_ABS="$(pwd)"
 
-# Detect an existing PhysicsIntern workspace (either host) and offer reset.
-# Claude workspaces are marked by CLAUDE.md; Pi workspaces by AGENTS.md.
+# Detect an existing PhysicsIntern workspace (any host) and offer reset. Pi
+# and Codex both use AGENTS.md as the workspace doc, so we disambiguate by
+# probing the host-specific directory (.pi/ vs .codex/) in addition to the
+# "PhysicsIntern workspace" marker in the workspace doc.
 RESET=0
 EXISTING_HOST=""
-if [[ -f CLAUDE.md ]] && grep -q "PhysicsIntern workspace" CLAUDE.md; then
+if [[ -d .claude ]] && [[ -f CLAUDE.md ]] && grep -q "PhysicsIntern workspace" CLAUDE.md; then
   EXISTING_HOST="claude"
-elif [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
+elif [[ -d .codex ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
+  EXISTING_HOST="codex"
+elif [[ -d .pi ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
   EXISTING_HOST="pi"
 fi
 
@@ -74,10 +78,10 @@ if [[ -n "$EXISTING_HOST" ]]; then
   echo "Reset will REMOVE every file and directory here EXCEPT problem.md,"
   echo "then re-initialize from templates (host: $HOST). This discards:"
   echo "  - .git/ (all commit history, including uncommitted work)"
-  echo "  - .claude/ or .pi/, .gitignore, CLAUDE.md or AGENTS.md, research_log.md"
+  echo "  - .claude/, .pi/, or .codex/, .gitignore, CLAUDE.md or AGENTS.md, research_log.md"
   echo "  - plan.md, survey.md, answer.md (if present)"
   echo "  - derivations/, computations/, critiques/, notes/, references/, data/"
-  echo "  - skills/, prompts/, package.json (if pi)"
+  echo "  - skills/, prompts/, package.json (if pi); .agents/skills/ (if codex)"
   echo "  - anything else in this directory"
   echo
   printf "Reset? [y/N] "
@@ -165,6 +169,13 @@ case "$HOST" in
     LAUNCH_HINT="Register the workspace as a local Pi package, then launch Pi:
        pi install -l .            # makes /survey, /derive, etc. visible
        pi                         # launch (Pi auto-installs pi-subagents + pi-web-access from .pi/settings.json)"
+    HEADER_FILES="AGENTS.md and research_log.md"
+    ;;
+  codex)
+    LAUNCH_HINT="Launch Codex in this directory:
+       codex                       # first run will prompt to trust the project — accept it,
+                                   # otherwise .codex/config.toml (incl. agent_roles) is ignored
+       Sub-agent dispatch uses spawn_agent + wait_agent (multi_agents_v2)."
     HEADER_FILES="AGENTS.md and research_log.md"
     ;;
 esac

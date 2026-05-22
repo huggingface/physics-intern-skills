@@ -175,14 +175,31 @@ def yaml_scalar(value) -> str:
 
 
 def render_tools(capabilities: list[str], host: dict) -> str:
-    """Map a list of capabilities to a host-specific tool list string."""
-    parts = []
+    """Map a list of capabilities to a host-specific tool list string.
+
+    Duplicates are removed (preserving first-seen order): some hosts collapse
+    multiple capabilities onto one tool (e.g. Codex maps both `file_write` and
+    `file_edit` to `apply_patch`).
+    """
+    seen: dict[str, None] = {}
     for cap in capabilities:
         mapped = host["tools_map"].get(cap)
         if mapped is None:
             raise KeyError(f"Capability {cap!r} not in tools_map for {host['name']}")
-        parts.append(mapped)
-    return ", ".join(parts)
+        seen.setdefault(mapped, None)
+    return ", ".join(seen)
+
+
+def toml_basic_string(s: str) -> str:
+    """Format a string as a TOML basic (double-quoted) string."""
+    escaped = (
+        s.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+    )
+    return f'"{escaped}"'
 
 
 def render_agent_frontmatter(meta: dict, host: dict) -> str:
@@ -215,12 +232,9 @@ def render_agent_frontmatter(meta: dict, host: dict) -> str:
 
 # ----- main rendering -----
 
-def render_agent(src_path: Path, host: dict, target: Path) -> None:
-    """Render a single agent file from commons/agents/<name>.md to the workspace."""
-    meta, body = read_frontmatter(src_path)
-    body = substitute(body, host)
+def _render_agent_yaml_md(meta: dict, body: str, host: dict, target: Path) -> None:
+    """Render an agent as YAML frontmatter + markdown body (Claude / Pi)."""
     frontmatter = render_agent_frontmatter(meta, host)
-
     # Source bodies omit the heading; the host can prepend one via
     # `agent_body_prefix` (with `{{name_cap}}` interpolated).
     prefix_template = host.get("agent_body_prefix", "")
@@ -232,14 +246,75 @@ def render_agent(src_path: Path, host: dict, target: Path) -> None:
     out_path.write_text(content)
 
 
-def render_agents(host: dict, target: Path) -> int:
-    """Render all agents from commons/agents/. Returns count."""
+def _render_agent_toml(meta: dict, body: str, host: dict, target: Path) -> None:
+    """Render an agent as a TOML role file (Codex).
+
+    Codex roles carry the prose role description in a `developer_instructions`
+    multi-line literal. There is no per-role tools allowlist — permissions are
+    sandbox-scoped at the workspace level.
+    """
+    if '"""' in body:
+        raise ValueError(
+            f"Agent body for {meta['name']!r} contains triple-quote — "
+            "cannot embed in TOML multi-line basic string"
+        )
+    lines = [
+        f"name = {toml_basic_string(meta['name'])}",
+        f"description = {toml_basic_string(meta['description'])}",
+        "",
+        'developer_instructions = """',
+        body.strip(),
+        '"""',
+        "",
+    ]
+    out_path = target / host["agents_dir"] / f"{meta['name']}.toml"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines))
+
+
+def render_agent(src_path: Path, host: dict, target: Path) -> None:
+    """Render a single agent file from commons/agents/<name>.md to the workspace."""
+    meta, body = read_frontmatter(src_path)
+    body = substitute(body, host)
+
+    fmt = host.get("agent_format", "yaml_md")
+    if fmt == "yaml_md":
+        _render_agent_yaml_md(meta, body, host, target)
+    elif fmt == "toml":
+        _render_agent_toml(meta, body, host, target)
+    else:
+        raise ValueError(f"Unknown agent_format: {fmt!r}")
+    return meta
+
+
+def render_agents(host: dict, target: Path) -> list[dict]:
+    """Render all agents from commons/agents/. Returns each agent's manifest."""
     src_dir = COMMONS / "agents"
-    count = 0
+    metas: list[dict] = []
     for src_path in sorted(src_dir.glob("*.md")):
-        render_agent(src_path, host, target)
-        count += 1
-    return count
+        metas.append(render_agent(src_path, host, target))
+    return metas
+
+
+def register_codex_agent_roles(metas: list[dict], target: Path) -> None:
+    """Append `[agent_roles.<name>]` blocks to .codex/config.toml.
+
+    Codex discovers user-defined roles via the `agent_roles` table in the
+    project config; each block points at a per-role TOML file. The base
+    config.toml ships in `hosts/codex/extras/`; we append the registrations
+    here after agents have been rendered.
+    """
+    cfg_path = target / ".codex" / "config.toml"
+    blocks = ["", "# Sub-agent role registrations (appended by the PhysicsIntern renderer)."]
+    for meta in metas:
+        name = meta["name"]
+        blocks.append("")
+        blocks.append(f"[agent_roles.{name}]")
+        blocks.append(f"name = {toml_basic_string(name)}")
+        blocks.append(f"description = {toml_basic_string(meta['description'])}")
+        blocks.append(f'config_file = ".codex/agents/{name}.toml"')
+    with cfg_path.open("a") as f:
+        f.write("\n".join(blocks) + "\n")
 
 
 # ----- skill rendering -----
@@ -329,7 +404,11 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
     meta, body = read_frontmatter(src_path)
     body = substitute(body, host)
 
-    if host["name"] == "claude":
+    if host["name"] in ("claude", "codex"):
+        # Codex skills use the same single-file SKILL.md layout as Claude
+        # (frontmatter `name:` + `description:`, markdown body). The only
+        # difference is the discovery root, controlled by `skills_dir` in
+        # host.toml (.claude/skills/ vs .agents/skills/).
         _render_skill_claude(meta, body, host, target)
     elif host["name"] == "pi":
         _render_skill_pi(meta, body, host, target)
@@ -392,7 +471,7 @@ def load_host(host_name: str) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", required=True, choices=["claude", "pi"])
+    parser.add_argument("--host", required=True, choices=["claude", "pi", "codex"])
     parser.add_argument("--target", required=True, type=Path)
     args = parser.parse_args()
 
@@ -400,15 +479,20 @@ def main() -> int:
     target = args.target.resolve()
     target.mkdir(parents=True, exist_ok=True)
 
-    n_agents = render_agents(host, target)
+    agent_metas = render_agents(host, target)
     n_skills = render_skills(host, target)
     render_commons_file("workspace-doc.md", host["workspace_doc"], host, target)
     render_commons_file("research_log.md", "research_log.md", host, target)
     render_gitignore(host, target)
     render_host_extras(host, target)
 
+    # Codex needs its sub-agent roles registered in .codex/config.toml after
+    # the extras have been copied (the base config.toml ships in extras/).
+    if host["name"] == "codex":
+        register_codex_agent_roles(agent_metas, target)
+
     print(
-        f"Rendered host={args.host}: {n_agents} agents + {n_skills} skills "
+        f"Rendered host={args.host}: {len(agent_metas)} agents + {n_skills} skills "
         f"+ workspace doc + research_log + .gitignore + host extras → {target}",
         file=sys.stderr,
     )

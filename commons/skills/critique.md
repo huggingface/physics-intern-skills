@@ -15,7 +15,7 @@ Run a strategic critique. The `critic` sub-agent reads `research_log.md` and `pl
 
 2. **Collect one-line summaries of prior critiques** to pass to the new critic. For each existing `critiques/CR-MMM.md`, extract one line: the filed date and headline finding. This prevents repetition but does not leak full prior analyses.
 
-3. **Dispatch the `critic` sub-agent**, passing the prior-critique one-liners and any focus from the user inline. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The critic reads `research_log.md` (esp. Established Results), `plan.md`, spot-checks artefacts as needed, follows its role definition in `{{agents_dir}}/critic.md`, and writes `critiques/CR-NNN.md` with YAML frontmatter (`filed: YYYY-MM-DD`, `status: pending`), `## Findings`, and an empty `## Resolution`. The structured `## Summary` / `## Result` / `## Flags` goes at the top.
+3. **Dispatch the `critic` sub-agent**, passing the prior-critique one-liners and any focus from the user inline. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The critic reads `research_log.md` (esp. Established Results), `plan.md`, spot-checks artefacts as needed, follows its role definition in `{{agents_dir}}/critic{{agent_ext}}`, and writes `critiques/CR-NNN.md` with YAML frontmatter (`filed: YYYY-MM-DD`, `status: pending`), `## Findings`, and an empty `## Resolution`. The structured `## Summary` / `## Result` / `## Flags` goes at the top.
 
 4. **Run the integration loop** when the critic returns:
    - Read `## Summary` / `## Result` / `## Flags` from `critiques/CR-NNN.md`.

@@ -6,6 +6,7 @@
 name = "pi"
 workspace_doc = "AGENTS.md"
 agents_dir = ".pi/agents"
+agent_ext = ".md"
 skills_dir = "skills"            # Pi keeps skills/ at workspace top level
 prompts_dir = "prompts"          # Pi prompts/ for slash-command workflow expansion
 

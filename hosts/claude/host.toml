@@ -6,6 +6,7 @@
 name = "claude"
 workspace_doc = "CLAUDE.md"
 agents_dir = ".claude/agents"
+agent_ext = ".md"
 skills_dir = ".claude/skills"
 
 # Heading prepended to each agent body. `{{name_cap}}` is the agent name with

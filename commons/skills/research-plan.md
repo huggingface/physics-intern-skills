@@ -10,7 +10,7 @@ Draft or update `plan.md` for the problem in `./problem.md`, using `survey.md` a
 
 ## Steps
 
-1. **Dispatch the `planner` sub-agent**, passing any user feedback or scope hints inline. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The planner reads `./problem.md`, `./survey.md` (if it exists), and `./research_log.md`; follows its role definition in `{{agents_dir}}/planner.md`; and writes `./plan.md`. If `plan.md` already exists, the planner marks completed steps, drops or revises as warranted. The structured `## Summary` / `## Result` / `## Flags` goes at the top of `plan.md`.
+1. **Dispatch the `planner` sub-agent**, passing any user feedback or scope hints inline. See {{workspace_doc}} §3 (Dispatch syntax) for the exact tool invocation. The planner reads `./problem.md`, `./survey.md` (if it exists), and `./research_log.md`; follows its role definition in `{{agents_dir}}/planner{{agent_ext}}`; and writes `./plan.md`. If `plan.md` already exists, the planner marks completed steps, drops or revises as warranted. The structured `## Summary` / `## Result` / `## Flags` goes at the top of `plan.md`.
 
 2. **Run the integration loop** when the planner returns:
    - Read the `## Summary` / `## Result` / `## Flags` from `plan.md`.
