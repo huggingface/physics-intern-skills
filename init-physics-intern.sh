@@ -6,7 +6,7 @@
 #   init-physics-intern.sh [--host=claude|pi] [target-dir]
 #
 # If target-dir is omitted, the current directory is used. The target dir is
-# created if missing. The script renders workspace files from src/ (shared
+# created if missing. The script renders workspace files from commons/ (shared
 # methodology) plus hosts/<host>/ (host-specific config and extras) via
 # bootstrap/render.py, scaffolds a problem.md skeleton, creates artefact dirs,
 # and makes the first git commit. It does NOT extract a problem one-liner —
@@ -42,8 +42,8 @@ case "$HOST" in
     exit 1 ;;
 esac
 
-if [[ ! -d "$SCRIPT_DIR/src" || ! -d "$SCRIPT_DIR/hosts/$HOST" ]]; then
-  echo "Error: src/ or hosts/$HOST/ not found in $SCRIPT_DIR" >&2
+if [[ ! -d "$SCRIPT_DIR/commons" || ! -d "$SCRIPT_DIR/hosts/$HOST" ]]; then
+  echo "Error: commons/ or hosts/$HOST/ not found in $SCRIPT_DIR" >&2
   exit 1
 fi
 
@@ -84,7 +84,7 @@ if [[ -n "$EXISTING_HOST" ]]; then
   echo "Reset complete. Re-initializing..."
 fi
 
-# Render workspace files from src/ + hosts/<host>/ via the bootstrap renderer.
+# Render workspace files from commons/ + hosts/<host>/ via the bootstrap renderer.
 python3 "$SCRIPT_DIR/bootstrap/render.py" --host="$HOST" --target="$TARGET_ABS"
 
 if [[ ! -f problem.md ]]; then

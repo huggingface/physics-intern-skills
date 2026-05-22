@@ -4,7 +4,7 @@
 Usage:
   render.py --host=claude|pi --target=<dir>
 
-Reads source files under src/ (host-agnostic methodology) and host configuration
+Reads source files under commons/ (host-agnostic methodology) and host configuration
 under hosts/<host>/, and writes rendered files into <target>.
 
 Source files use mustache-style placeholders ({{workspace_doc}}, {{agents_dir}})
@@ -131,7 +131,7 @@ def render_agent_frontmatter(meta: dict, host: dict) -> str:
 # ----- main rendering -----
 
 def render_agent(src_path: Path, host: dict, target: Path) -> None:
-    """Render a single agent file from src/agents/<name>.md to the workspace."""
+    """Render a single agent file from commons/agents/<name>.md to the workspace."""
     meta, body = _frontmatter.read(src_path)
     body = substitute(body, host)
     frontmatter = render_agent_frontmatter(meta, host)
@@ -148,8 +148,8 @@ def render_agent(src_path: Path, host: dict, target: Path) -> None:
 
 
 def render_agents(host: dict, target: Path) -> int:
-    """Render all agents from src/agents/. Returns count."""
-    src_dir = ROOT / "src" / "agents"
+    """Render all agents from commons/agents/. Returns count."""
+    src_dir = ROOT / "commons" / "agents"
     count = 0
     for src_path in sorted(src_dir.glob("*.md")):
         render_agent(src_path, host, target)
@@ -195,7 +195,7 @@ def _emit_yaml(fields: list[tuple[str, object]]) -> str:
 
 
 def render_skill(src_path: Path, host: dict, target: Path) -> None:
-    """Render a single skill from src/skills/<name>.md to host-specific paths."""
+    """Render a single skill from commons/skills/<name>.md to host-specific paths."""
     meta, body = _frontmatter.read(src_path)
     body = substitute(body, host)
     name = meta["name"]
@@ -246,8 +246,8 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
 
 
 def render_skills(host: dict, target: Path) -> int:
-    """Render all skills from src/skills/. Returns count."""
-    src_dir = ROOT / "src" / "skills"
+    """Render all skills from commons/skills/. Returns count."""
+    src_dir = ROOT / "commons" / "skills"
     count = 0
     for src_path in sorted(src_dir.glob("*.md")):
         render_skill(src_path, host, target)
@@ -256,22 +256,22 @@ def render_skills(host: dict, target: Path) -> int:
 
 
 def render_workspace_doc(host: dict, target: Path) -> None:
-    """Render src/workspace-doc.md to <target>/<workspace_doc>."""
-    src = (ROOT / "src" / "workspace-doc.md").read_text()
+    """Render commons/workspace-doc.md to <target>/<workspace_doc>."""
+    src = (ROOT / "commons" / "workspace-doc.md").read_text()
     rendered = substitute(src, host)
     (target / host["workspace_doc"]).write_text(rendered)
 
 
 def render_research_log(host: dict, target: Path) -> None:
-    """Render src/research_log.md to <target>/research_log.md."""
-    src = (ROOT / "src" / "research_log.md").read_text()
+    """Render commons/research_log.md to <target>/research_log.md."""
+    src = (ROOT / "commons" / "research_log.md").read_text()
     rendered = substitute(src, host)
     (target / "research_log.md").write_text(rendered)
 
 
 def render_gitignore(host: dict, target: Path) -> None:
-    """Render src/gitignore + optional hosts/<host>/gitignore.extra to <target>/.gitignore."""
-    src = (ROOT / "src" / "gitignore").read_text()
+    """Render commons/gitignore + optional hosts/<host>/gitignore.extra to <target>/.gitignore."""
+    src = (ROOT / "commons" / "gitignore").read_text()
     extra_path = ROOT / "hosts" / host["name"] / "gitignore.extra"
     if extra_path.exists():
         src += extra_path.read_text()

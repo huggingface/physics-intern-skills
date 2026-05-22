@@ -6,7 +6,7 @@ Modern AI coding harnesses already provide tool-use loops, fresh-context sub-age
 
 State lives in plain markdown files. The main agent reads and edits those files, and interacts with the user; sub-agents handle substantive work in fresh contexts. Discipline is prose-encoded (in the workspace `CLAUDE.md` / `AGENTS.md` and the agent prompts).
 
-The methodology is **host-agnostic**: one source tree (`src/`) is rendered per host (`hosts/<host>/`) by `bootstrap/render.py`. Adding a new agent or skill is one file; adding a new host is one folder.
+The methodology is **host-agnostic**: one source tree (`commons/`) is rendered per host (`hosts/<host>/`) by `bootstrap/render.py`. Adding a new agent or skill is one file; adding a new host is one folder.
 
 ## How to use
 
@@ -26,7 +26,7 @@ claude                                          # then in Claude Code:
 > /survey                                       # begin
 ```
 
-The bootstrap script renders the workspace files from `src/` + `hosts/<host>/`, scaffolds `problem.md` if missing, creates the artefact directories (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`), seeds `notes/flags.md`, initialises git, and makes the first commit. Re-running on an existing workspace prompts for a reset (preserves `problem.md`, wipes everything else).
+The bootstrap script renders the workspace files from `commons/` + `hosts/<host>/`, scaffolds `problem.md` if missing, creates the artefact directories (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`), seeds `notes/flags.md`, initialises git, and makes the first commit. Re-running on an existing workspace prompts for a reset (preserves `problem.md`, wipes everything else).
 
 The script also accepts `--host=pi` for the Pi target — same methodology, different conventions: `AGENTS.md` instead of `CLAUDE.md`, sub-agent dispatch via Pi's `subagent` tool, etc. Launch sequence for Pi is `pi install -l .` then `pi`. See §Hosts below.
 
@@ -38,7 +38,7 @@ physics-intern/
 ├── README.md                          # this file
 ├── CLAUDE.md                          # repo-level dev instructions (not for workspaces)
 ├── init-physics-intern.sh             # workspace bootstrap script
-├── src/                               # host-agnostic source of truth
+├── commons/                           # host-agnostic source of truth
 │   ├── workspace-doc.md               # body of CLAUDE.md / AGENTS.md (with placeholders)
 │   ├── research_log.md
 │   ├── gitignore
@@ -75,7 +75,7 @@ physics-intern/
 │           ├── package.json
 │           └── .pi/settings.json
 ├── bootstrap/                         # renderer
-│   ├── render.py                      # reads src/ + hosts/<host>/, emits workspace
+│   ├── render.py                      # reads commons/ + hosts/<host>/, emits workspace
 │   └── frontmatter.py                 # ~70-line stdlib YAML mini-parser
 ├── templates/, templates-pi/          # legacy reference (no longer used by bootstrap)
 ├── .claude/skills/
@@ -113,18 +113,18 @@ Sub-agents do not commit. The integration loop is the load-bearing operational d
 | `/finalize` | Synthesises `answer.md` from Established Results. |
 | `/autoresearch` | Drives the pipeline autonomously, skipping the three HITL gates. Records each skipped decision in `notes/auto-decisions.md`. Intended for methodology validation and problems where course correction is unlikely. |
 
-The 7 substantive skills (`/survey` through `/finalize`) dispatch a named sub-agent; the agent prompt in `src/agents/<role>.md` carries the substance.
+The 7 substantive skills (`/survey` through `/finalize`) dispatch a named sub-agent; the agent prompt in `commons/agents/<role>.md` carries the substance.
 
 
 ## Working on the methodology
 
 The unit of change is usually one of:
 
-- **`src/workspace-doc.md`** — the workspace main-agent prompt. Anything affecting how the main agent integrates returns, edits which files, dispatches with what context, or runs the checks-and-balances rule goes here.
-- **`src/agents/<role>.md`** — the substantive prompts. One role per file (surveyor, planner, deriver, computer, reviewer, critic, finalizer). The skill workflows reference these.
-- **`src/skills/<name>.md`** — the per-skill main-agent workflow. Edit when changing what the dispatcher passes to the sub-agent, the structured return contract, or the description visible to the main agent.
+- **`commons/workspace-doc.md`** — the workspace main-agent prompt. Anything affecting how the main agent integrates returns, edits which files, dispatches with what context, or runs the checks-and-balances rule goes here.
+- **`commons/agents/<role>.md`** — the substantive prompts. One role per file (surveyor, planner, deriver, computer, reviewer, critic, finalizer). The skill workflows reference these.
+- **`commons/skills/<name>.md`** — the per-skill main-agent workflow. Edit when changing what the dispatcher passes to the sub-agent, the structured return contract, or the description visible to the main agent.
 - **`hosts/<host>/`** — host-specific glue. Edit when a host's tool vocabulary, frontmatter shape, or dispatch syntax changes.
-- **`init-physics-intern.sh`** and **`src/research_log.md`** — for new files seeded into the workspace skeleton, or new placeholders.
+- **`init-physics-intern.sh`** and **`commons/research_log.md`** — for new files seeded into the workspace skeleton, or new placeholders.
 - **`.claude/skills/investigate-run/SKILL.md`** — when the methodology contract changes, the audit rules need to follow.
 
 Changes propagate to **new** workspaces on the next `init-physics-intern.sh` run. Existing workspaces carry the methodology baked into their `.claude/` or `.pi/` at the time they were created — there is no upgrade skill, so older workspaces are patched by hand if needed.
@@ -148,7 +148,7 @@ Run after a workspace session to see where the methodology slipped and which pro
 
 ### Design choices worth remembering
 
-- **The host is a deployment decision, not an architectural one.** The methodology source lives in `src/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding Codex, OpenCode, or Gemini CLI means writing a `hosts/<host>/host.toml` plus a small dispatch_example file.
+- **The host is a deployment decision, not an architectural one.** The methodology source lives in `commons/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding Codex, OpenCode, or Gemini CLI means writing a `hosts/<host>/host.toml` plus a small dispatch_example file.
 - **Files are durable state; context is ephemeral.** The user may clear the session at any time. After a clear, the main agent must resume from `research_log.md` and `plan.md` alone. This is what allows the integration loop to be the only handoff mechanism.
 - **Explicit dispatch, no auto-fork.** Both hosts use the same dispatch model: main agent reads the skill workflow, writes the brief, calls the dispatch tool (`Task` for Claude, `subagent` for Pi), integrates the return. Claude Code's `context: fork` auto-fork shortcut is not used — the symmetry is more valuable than the keystroke saved.
 - **Fresh context for `/review` and `/critique` is non-negotiable.** Reviewers don't see prior reviews on the same target. Critics get only one-line summaries of prior critiques. Sub-agents don't see the main agent's reasoning.
@@ -159,7 +159,7 @@ Run after a workspace session to see where the methodology slipped and which pro
 
 ## Hosts
 
-Two hosts are supported today; both render from the same `src/` tree.
+Two hosts are supported today; both render from the same `commons/` tree.
 
 - **Claude Code** (`--host=claude`, default). Workspace doc at `CLAUDE.md`, sub-agent prompts at `.claude/agents/<role>.md`, skills at `.claude/skills/<name>/SKILL.md`. Sub-agent dispatch via the `Task` tool with `subagent_type` set to the agent name.
 
