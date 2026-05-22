@@ -1,0 +1,12 @@
+{
+  "name": "physics-intern-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PhysicsIntern workspace (Pi host). Methodology lives in AGENTS.md and .pi/; slash commands and workflow prompts in skills/ and prompts/.",
+  "keywords": ["pi-package"],
+  "pi": {
+    "skills": ["./skills"],
+    "prompts": ["./prompts"],
+    "extensions": []
+  }
+}

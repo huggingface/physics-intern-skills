@@ -6,12 +6,13 @@
 #   init-physics-intern.sh [--host=claude|pi] [target-dir]
 #
 # If target-dir is omitted, the current directory is used. The target dir is
-# created if missing. The script copies the bundled template (templates/ for
-# claude, templates-pi/ for pi) into it, scaffolds a problem.md skeleton,
-# creates artefact dirs, and makes the first git commit. It does NOT extract
-# a problem one-liner — the user fills in problem.md, then launches their
-# coding agent and runs /start-research, which reads problem.md and
-# substitutes the {{PROBLEM_ONELINER}} placeholders.
+# created if missing. The script renders workspace files from src/ (shared
+# methodology) plus hosts/<host>/ (host-specific config and extras) via
+# bootstrap/render.py, scaffolds a problem.md skeleton, creates artefact dirs,
+# and makes the first git commit. It does NOT extract a problem one-liner —
+# the user fills in problem.md, then launches their coding agent and runs
+# /start-research, which reads problem.md and substitutes the
+# {{PROBLEM_ONELINER}} placeholders.
 
 set -euo pipefail
 
@@ -35,15 +36,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$HOST" in
-  claude) TEMPLATES_DIR="$SCRIPT_DIR/templates" ;;
-  pi)     TEMPLATES_DIR="$SCRIPT_DIR/templates-pi" ;;
+  claude|pi) ;;
   *)
     echo "Error: --host must be 'claude' or 'pi' (got '$HOST')" >&2
     exit 1 ;;
 esac
 
-if [[ ! -d "$TEMPLATES_DIR" ]]; then
-  echo "Error: templates directory not found at $TEMPLATES_DIR" >&2
+if [[ ! -d "$SCRIPT_DIR/src" || ! -d "$SCRIPT_DIR/hosts/$HOST" ]]; then
+  echo "Error: src/ or hosts/$HOST/ not found in $SCRIPT_DIR" >&2
   exit 1
 fi
 
@@ -84,24 +84,8 @@ if [[ -n "$EXISTING_HOST" ]]; then
   echo "Reset complete. Re-initializing..."
 fi
 
-# Common files (both hosts).
-cp "$TEMPLATES_DIR/gitignore"       ./.gitignore
-cp "$TEMPLATES_DIR/research_log.md" ./research_log.md
-
-# Host-specific files.
-case "$HOST" in
-  claude)
-    cp "$TEMPLATES_DIR/CLAUDE.md" ./CLAUDE.md
-    cp -R "$TEMPLATES_DIR/.claude" ./
-    ;;
-  pi)
-    cp "$TEMPLATES_DIR/AGENTS.md"    ./AGENTS.md
-    cp "$TEMPLATES_DIR/package.json" ./package.json
-    cp -R "$TEMPLATES_DIR/.pi"       ./
-    cp -R "$TEMPLATES_DIR/skills"    ./
-    cp -R "$TEMPLATES_DIR/prompts"   ./
-    ;;
-esac
+# Render workspace files from src/ + hosts/<host>/ via the bootstrap renderer.
+python3 "$SCRIPT_DIR/bootstrap/render.py" --host="$HOST" --target="$TARGET_ABS"
 
 if [[ ! -f problem.md ]]; then
   cat > problem.md <<'EOF'
