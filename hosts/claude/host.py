@@ -24,6 +24,9 @@ HOST = {
     # Capabilities are joined with ", " using tools_map.
     "agent_frontmatter_order": ["name", "description", "tools"],
     "agent_extra_fields": {},  # no extras for Claude
+    # Heading prepended to each agent body. `{{name_cap}}` is the agent name
+    # with first letter capitalised.
+    "agent_body_prefix": "# {{name_cap}}\n\n",
     # File-backed values: each is loaded from hosts/<host>/<filename> at render
     # time. Missing files yield an empty string — Claude has no preamble.md.
     "file_backed": {

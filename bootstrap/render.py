@@ -135,13 +135,11 @@ def render_agent(src_path: Path, host: dict, target: Path) -> None:
     body = substitute(body, host)
     frontmatter = render_agent_frontmatter(meta, host)
 
-    # For Claude, the body conventionally starts with "# <Name>\n\n" — Pi omits it.
-    # Source bodies omit the title; Claude renderer adds it.
-    if host["name"] == "claude":
-        title = f"# {meta['name'].capitalize()}\n\n"
-        content = f"{frontmatter}\n\n{title}{body.lstrip()}"
-    else:
-        content = f"{frontmatter}\n\n{body.lstrip()}"
+    # Source bodies omit the heading; the host can prepend one via
+    # `agent_body_prefix` (with `{{name_cap}}` interpolated).
+    prefix_template = host.get("agent_body_prefix", "")
+    prefix = prefix_template.replace("{{name_cap}}", meta["name"].capitalize())
+    content = f"{frontmatter}\n\n{prefix}{body.lstrip()}"
 
     out_path = target / host["agents_dir"] / f"{meta['name']}.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
