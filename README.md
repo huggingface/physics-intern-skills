@@ -62,13 +62,14 @@ physics-intern/
 │       └── autoresearch.md
 ├── hosts/                             # host-specific glue
 │   ├── claude/
-│   │   ├── host.py                    # workspace_doc, tools_map, frontmatter shape
+│   │   ├── host.toml                  # workspace_doc, tools_map, frontmatter shape
 │   │   ├── dispatch_example.md        # Task tool syntax example
 │   │   └── extras/.claude/settings.json
 │   └── pi/
-│       ├── host.py
+│       ├── host.toml
 │       ├── preamble.md                # tool-discipline preamble injected at top
 │       ├── dispatch_example.md        # subagent JSON example
+│       ├── skill_stub.md.tmpl         # layout for Pi's skills/<name>/SKILL.md stubs
 │       ├── gitignore.extra            # node_modules/
 │       └── extras/
 │           ├── package.json
@@ -147,7 +148,7 @@ Run after a workspace session to see where the methodology slipped and which pro
 
 ### Design choices worth remembering
 
-- **The host is a deployment decision, not an architectural one.** The methodology source lives in `src/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding Codex, OpenCode, or Gemini CLI means writing a `hosts/<host>/host.py` plus a small dispatch_example file.
+- **The host is a deployment decision, not an architectural one.** The methodology source lives in `src/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding Codex, OpenCode, or Gemini CLI means writing a `hosts/<host>/host.toml` plus a small dispatch_example file.
 - **Files are durable state; context is ephemeral.** The user may clear the session at any time. After a clear, the main agent must resume from `research_log.md` and `plan.md` alone. This is what allows the integration loop to be the only handoff mechanism.
 - **Explicit dispatch, no auto-fork.** Both hosts use the same dispatch model: main agent reads the skill workflow, writes the brief, calls the dispatch tool (`Task` for Claude, `subagent` for Pi), integrates the return. Claude Code's `context: fork` auto-fork shortcut is not used — the symmetry is more valuable than the keystroke saved.
 - **Fresh context for `/review` and `/critique` is non-negotiable.** Reviewers don't see prior reviews on the same target. Critics get only one-line summaries of prior critiques. Sub-agents don't see the main agent's reasoning.
@@ -174,4 +175,4 @@ Planned but not implemented: `mcp-arxiv` (arxiv search/fetch), `mcp-papers` (ind
 
 ### Other hosts
 
-Codex, OpenCode, Gemini CLI, Goose — not implemented yet. Each would be a new `hosts/<host>/` folder with `host.py` (tools_map, frontmatter shape, paths), `dispatch_example.md`, and any host-specific extras. Codex is the closest structural cousin to Claude Code and would likely port mechanically once we agree on its frontmatter conventions.
+Codex, OpenCode, Gemini CLI, Goose — not implemented yet. Each would be a new `hosts/<host>/` folder with `host.toml` (tools_map, frontmatter shape, paths), `dispatch_example.md`, and any host-specific extras. Codex is the closest structural cousin to Claude Code and would likely port mechanically once we agree on its frontmatter conventions.

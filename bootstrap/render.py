@@ -19,6 +19,7 @@ import importlib.util
 import re
 import shutil
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -296,8 +297,8 @@ def render_host_extras(host: dict, target: Path) -> None:
 
 def load_host(host_name: str) -> dict:
     """Load the host config dict and enrich with file-backed values."""
-    host_mod = load_module(ROOT / "hosts" / host_name / "host.py", f"{host_name}_host")
-    host = dict(host_mod.HOST)
+    with (ROOT / "hosts" / host_name / "host.toml").open("rb") as f:
+        host = tomllib.load(f)
     for key, filename in host.pop("file_backed", {}).items():
         path = ROOT / "hosts" / host_name / filename
         host[key] = path.read_text() if path.exists() else ""
