@@ -160,32 +160,30 @@ def render_agents(host: dict, target: Path) -> int:
 
 # ----- skill rendering -----
 
-def _pi_stub_body(meta: dict) -> str:
+def _pi_stub_body(meta: dict, host: dict) -> str:
     """Generate the Pi skills/<name>/SKILL.md stub body from manifest fields."""
     name = meta["name"]
-    title = name.replace("-", " ").capitalize()
-    lines = [
-        f"# {title}",
-        "",
-        f"Run the `/{name}` workflow. The slash command expands the full workflow instructions in the active session.",
-        "",
-    ]
     agent = meta.get("agent")
-    lines.append(
+    agents_used_line = (
         f"Agents used: `{agent}`." if agent else "Agents used: none (runs in main-agent context)."
     )
-    lines.append("")
-
     output = meta.get("output_pattern")
     if output:
         suffix = " (next available number)" if meta.get("artefact_kind") else ""
-        line = f"Output: `{output}`{suffix}"
+        output_block = f"\n\nOutput: `{output}`{suffix}"
         brief = meta.get("brief")
         if brief:
-            line += f". Brief written to `{brief}` before dispatch"
-        line += "."
-        lines.append(line)
-    return "\n".join(lines) + "\n"
+            output_block += f". Brief written to `{brief}` before dispatch"
+        output_block += "."
+    else:
+        output_block = ""
+    ctx = {
+        "title": name.replace("-", " ").capitalize(),
+        "name": name,
+        "agents_used_line": agents_used_line,
+        "output_block": output_block,
+    }
+    return substitute(host["skill_stub_template"], ctx)
 
 
 def _emit_yaml(fields: list[tuple[str, object]]) -> str:
@@ -224,7 +222,7 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
         stub_fields = [("name", name), ("description", meta["description"])]
         stub_path = target / host["skills_dir"] / name / "SKILL.md"
         stub_path.parent.mkdir(parents=True, exist_ok=True)
-        stub_path.write_text(f"{_emit_yaml(stub_fields)}\n\n{_pi_stub_body(meta)}")
+        stub_path.write_text(f"{_emit_yaml(stub_fields)}\n\n{_pi_stub_body(meta, host)}")
 
         # 2. Prompt: prompts/<name>.md
         prompt_fields: list[tuple[str, object]] = [("description", meta["description"])]
@@ -303,7 +301,12 @@ def load_host(host_name: str) -> dict:
     host_mod = load_module(ROOT / "hosts" / host_name / "host.py", f"{host_name}_host")
     host = dict(host_mod.HOST)
     # Optional file-backed values: load each if the file exists, else "".
-    for key, filename in [("preamble", "preamble.md"), ("dispatch_example", "dispatch_example.md")]:
+    file_backed = [
+        ("preamble", "preamble.md"),
+        ("dispatch_example", "dispatch_example.md"),
+        ("skill_stub_template", "skill_stub.md.tmpl"),
+    ]
+    for key, filename in file_backed:
         path = ROOT / "hosts" / host_name / filename
         host[key] = path.read_text() if path.exists() else ""
     return host
