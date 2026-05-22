@@ -52,6 +52,42 @@ def substitute(text: str, host: dict) -> str:
 
 # ----- frontmatter emission -----
 
+# Characters that, if they appear at the start of a plain scalar, force quoting.
+_YAML_RESERVED_STARTERS = set("?:,[]{}#&*!|>'\"%@`")
+_YAML_RESERVED_WORDS = {"true", "false", "null", "yes", "no", "on", "off", "~"}
+_NUMERIC_RE = re.compile(r"^-?\d+(\.\d+)?([eE][+-]?\d+)?$")
+
+
+def yaml_scalar(value) -> str:
+    """Format a Python value as a YAML scalar, quoting only when required.
+
+    Quotes if the plain-scalar form would be ambiguous: reserved starting
+    characters, reserved words (true/false/null/…), numeric-looking strings,
+    leading/trailing whitespace, the `: ` key separator, or the ` #` comment
+    starter. Uses double quotes unless the value contains `"`, in which case
+    single quotes with `''` escaping are used.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    s = str(value)
+    if not s:
+        return '""'
+    needs_quotes = (
+        s[0] in _YAML_RESERVED_STARTERS
+        or s[0].isspace()
+        or s[-1].isspace()
+        or s.lower() in _YAML_RESERVED_WORDS
+        or bool(_NUMERIC_RE.match(s))
+        or ": " in s
+        or " #" in s
+    )
+    if not needs_quotes:
+        return s
+    if '"' not in s:
+        return f'"{s}"'
+    return "'" + s.replace("'", "''") + "'"
+
+
 def render_tools(capabilities: list[str], host: dict) -> str:
     """Map a list of capabilities to a host-specific tool list string."""
     parts = []
@@ -86,10 +122,7 @@ def render_agent_frontmatter(meta: dict, host: dict) -> str:
     lines = ["---"]
     for key in host["agent_frontmatter_order"]:
         if key in fields:
-            value = fields[key]
-            if isinstance(value, bool):
-                value = "true" if value else "false"
-            lines.append(f"{key}: {value}")
+            lines.append(f"{key}: {yaml_scalar(fields[key])}")
     lines.append("---")
     return "\n".join(lines)
 
@@ -159,9 +192,7 @@ def _emit_yaml(fields: list[tuple[str, object]]) -> str:
     """Emit `---`-delimited YAML frontmatter from an ordered list of (key, value)."""
     lines = ["---"]
     for key, value in fields:
-        if isinstance(value, bool):
-            value = "true" if value else "false"
-        lines.append(f"{key}: {value}")
+        lines.append(f"{key}: {yaml_scalar(value)}")
     lines.append("---")
     return "\n".join(lines)
 
@@ -180,7 +211,7 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
         args_hint = meta.get("arguments_hint", "")
         if args_hint:
             # Claude uses `argument-hint:` (singular, hyphenated)
-            fields.append(("argument-hint", f'"{args_hint}"' if " " in str(args_hint) else args_hint))
+            fields.append(("argument-hint", args_hint))
         out_path = target / host["skills_dir"] / name / "SKILL.md"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(f"{_emit_yaml(fields)}\n\n{body.lstrip()}")
@@ -199,9 +230,7 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
         prompt_fields: list[tuple[str, object]] = [("description", meta["description"])]
         args_hint = meta.get("arguments_hint", "")
         if args_hint:
-            prompt_fields.append(
-                ("args", f'"{args_hint}"' if any(c in str(args_hint) for c in '[]:|') else args_hint)
-            )
+            prompt_fields.append(("args", args_hint))
         prompt_fields.append(("section", "PhysicsIntern Workflows"))
         if meta.get("top_level_cli", True):
             prompt_fields.append(("topLevelCli", True))
