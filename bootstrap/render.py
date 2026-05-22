@@ -232,6 +232,10 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
         if args_hint:
             prompt_fields.append(("args", args_hint))
         prompt_fields.append(("section", "PhysicsIntern Workflows"))
+        # Pi convention: every workflow is invocable as a top-level slash command
+        # by default. A skill can opt out with `top_level_cli: false` in its
+        # manifest (e.g. /autoresearch — driven from the main-agent context
+        # rather than offered as a fresh command).
         if meta.get("top_level_cli", True):
             prompt_fields.append(("topLevelCli", True))
 
