@@ -6,7 +6,7 @@ Modern AI coding harnesses already provide tool-use loops, fresh-context sub-age
 
 State lives in plain markdown files. The main agent reads and edits those files, and interacts with the user; sub-agents handle substantive work in fresh contexts. Discipline is prose-encoded (in the workspace `CLAUDE.md` / `AGENTS.md` and the agent prompts).
 
-The methodology is **host-agnostic**: one source tree (`commons/`) is rendered per host (`hosts/<host>/`) by `bootstrap/render.py`. Adding a new agent or skill is one file; adding a new host is one folder.
+The methodology is **host-agnostic**: one source tree (`commons/`) is rendered per host (`hosts/<host>/`) by `commons/render.py`. Adding a new agent or skill is one file; adding a new host is one folder.
 
 ## How to use
 
@@ -39,6 +39,7 @@ physics-intern/
 ├── CLAUDE.md                          # repo-level dev instructions (not for workspaces)
 ├── init-physics-intern.sh             # workspace bootstrap script
 ├── commons/                           # host-agnostic source of truth
+│   ├── render.py                      # renderer: reads commons/ + hosts/<host>/, emits workspace
 │   ├── workspace-doc.md               # body of CLAUDE.md / AGENTS.md (with placeholders)
 │   ├── research_log.md
 │   ├── gitignore
@@ -74,10 +75,6 @@ physics-intern/
 │       └── extras/
 │           ├── package.json
 │           └── .pi/settings.json
-├── bootstrap/                         # renderer
-│   ├── render.py                      # reads commons/ + hosts/<host>/, emits workspace
-│   └── frontmatter.py                 # ~70-line stdlib YAML mini-parser
-├── templates/, templates-pi/          # legacy reference (no longer used by bootstrap)
 ├── .claude/skills/
 │   └── investigate-run/               # repo-level audit skill
 ├── workspaces/                        # sample workspaces — methodology test runs and real research

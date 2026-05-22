@@ -8,7 +8,7 @@
 # If target-dir is omitted, the current directory is used. The target dir is
 # created if missing. The script renders workspace files from commons/ (shared
 # methodology) plus hosts/<host>/ (host-specific config and extras) via
-# bootstrap/render.py, scaffolds a problem.md skeleton, creates artefact dirs,
+# commons/render.py, scaffolds a problem.md skeleton, creates artefact dirs,
 # and makes the first git commit. It does NOT extract a problem one-liner —
 # the user fills in problem.md, then launches their coding agent and runs
 # /start-research, which reads problem.md and substitutes the
@@ -18,6 +18,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Parse CLI args: --host selects the agent host (claude or pi), positional arg
+# is the target directory (defaults to current dir).
 HOST="claude"
 TARGET_DIR="."
 while [[ $# -gt 0 ]]; do
@@ -35,6 +37,7 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
+# Validate host selection — only claude and pi are supported.
 case "$HOST" in
   claude|pi) ;;
   *)
@@ -42,11 +45,13 @@ case "$HOST" in
     exit 1 ;;
 esac
 
+# Sanity-check that the template sources this script needs are present.
 if [[ ! -d "$SCRIPT_DIR/commons" || ! -d "$SCRIPT_DIR/hosts/$HOST" ]]; then
   echo "Error: commons/ or hosts/$HOST/ not found in $SCRIPT_DIR" >&2
   exit 1
 fi
 
+# Create the target dir if needed and cd into it; record its absolute path.
 mkdir -p "$TARGET_DIR"
 cd "$TARGET_DIR"
 TARGET_ABS="$(pwd)"
@@ -61,6 +66,8 @@ elif [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
   EXISTING_HOST="pi"
 fi
 
+# If a prior workspace is detected, prompt the user before wiping it.
+# problem.md is preserved so the user doesn't lose the question they wrote.
 if [[ -n "$EXISTING_HOST" ]]; then
   echo "$TARGET_ABS already contains a PhysicsIntern workspace (host: $EXISTING_HOST)."
   echo
@@ -85,8 +92,10 @@ if [[ -n "$EXISTING_HOST" ]]; then
 fi
 
 # Render workspace files from commons/ + hosts/<host>/ via the bootstrap renderer.
-python3 "$SCRIPT_DIR/bootstrap/render.py" --host="$HOST" --target="$TARGET_ABS"
+python3 "$SCRIPT_DIR/commons/render.py" --host="$HOST" --target="$TARGET_ABS"
 
+# Scaffold a problem.md skeleton if the user hasn't written one yet.
+# They will fill in the setup and main question before launching the agent.
 if [[ ! -f problem.md ]]; then
   cat > problem.md <<'EOF'
 # Problem
@@ -101,6 +110,8 @@ if [[ ! -f problem.md ]]; then
 EOF
 fi
 
+# Create the artefact directories where sub-agents will deposit their outputs.
+# .gitkeep files ensure the empty dirs are tracked by git.
 ARTEFACT_DIRS="derivations computations critiques notes references data"
 for d in $ARTEFACT_DIRS; do
   mkdir -p "$d"
@@ -111,6 +122,7 @@ done
 mkdir -p derivations/.briefs computations/.briefs
 touch derivations/.briefs/.gitkeep computations/.briefs/.gitkeep
 
+# Seed notes/flags.md — the main agent's ledger of sub-agent flag dispositions.
 if [[ ! -f notes/flags.md ]]; then
   cat > notes/flags.md <<'EOF'
 # Flag dispositions
@@ -123,6 +135,8 @@ See SYSTEM.md / CLAUDE.md → Integration loop.
 EOF
 fi
 
+# Initialize git (if needed) and make the bootstrap commit so the user has a
+# clean baseline before the agent starts modifying files.
 if [[ ! -d .git ]]; then
   git init -q
 fi
@@ -135,6 +149,7 @@ else
                 -m "Bootstrapped from init-physics-intern.sh."
 fi
 
+# Build the success message: header line plus host-specific launch instructions.
 if [[ $RESET -eq 1 ]]; then
   HEADER="PhysicsIntern workspace reset and re-initialized (host: $HOST) at:"
 else
@@ -154,6 +169,7 @@ case "$HOST" in
     ;;
 esac
 
+# Print final summary and next-steps guidance.
 cat <<EOF
 
 $HEADER

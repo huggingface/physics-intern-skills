@@ -10,12 +10,13 @@ under hosts/<host>/, and writes rendered files into <target>.
 Source files use mustache-style placeholders ({{workspace_doc}}, {{agents_dir}})
 that are substituted from the host config. Agent capabilities (file_read, glob,
 …) are translated to host-specific tool names via hosts/<host>/host.py.
+
+Requires Python 3.11+ (uses stdlib `tomllib`); no third-party packages.
 """
 
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import re
 import shutil
 import sys
@@ -23,30 +24,114 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-SCRIPT_DIR = Path(__file__).resolve().parent
-ROOT = SCRIPT_DIR.parent
-
-
-def load_module(path: Path, name: str):
-    spec = importlib.util.spec_from_file_location(name, path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+COMMONS = Path(__file__).resolve().parent  # this script lives in commons/
+HOSTS = COMMONS.parent / "hosts"
 
 
 # ----- frontmatter parsing -----
+#
+# Minimal YAML-frontmatter parser. Handles the subset we actually use:
+# top-level scalar keys, flow-style lists (`key: [a, b]`), and block-style
+# lists. Not handled (intentionally): nested mappings, anchors, multiline
+# strings, quoted keys. If we ever need them we'll switch to PyYAML.
 
-_frontmatter = load_module(SCRIPT_DIR / "frontmatter.py", "frontmatter")
+def _coerce(value: str) -> Any:
+    """Coerce a bare YAML scalar to a Python value."""
+    v = value.strip()
+    # quoted string
+    if len(v) >= 2 and v[0] == v[-1] and v[0] in ('"', "'"):
+        return v[1:-1]
+    # booleans
+    if v == "true":
+        return True
+    if v == "false":
+        return False
+    # integer
+    if re.fullmatch(r"-?\d+", v):
+        return int(v)
+    return v
+
+
+def _parse_flow_list(value: str) -> list[Any]:
+    """Parse `[a, b, c]` style lists."""
+    inner = value.strip()[1:-1].strip()
+    if not inner:
+        return []
+    return [_coerce(item) for item in inner.split(",")]
+
+
+def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+    """Parse `---`-delimited frontmatter. Returns (metadata, body)."""
+    if not text.startswith("---\n"):
+        return {}, text
+
+    end = text.find("\n---\n", 4)
+    if end == -1:
+        # Maybe ends with `---` at EOF
+        end_eof = text.find("\n---", 4)
+        if end_eof == -1 or text[end_eof + 4:].strip():
+            raise ValueError("Frontmatter opened with --- but no closing --- found")
+        header = text[4:end_eof]
+        body = ""
+    else:
+        header = text[4:end]
+        body = text[end + 5:]
+
+    meta: dict[str, Any] = {}
+    lines = header.split("\n")
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if not line.strip() or line.lstrip().startswith("#"):
+            i += 1
+            continue
+        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*):\s*(.*)$", line)
+        if not m:
+            raise ValueError(f"Unparseable frontmatter line: {line!r}")
+        key, rest = m.group(1), m.group(2).strip()
+
+        if rest == "":
+            # Block-style list follows
+            items = []
+            j = i + 1
+            while j < len(lines) and lines[j].startswith("  - "):
+                items.append(_coerce(lines[j][4:]))
+                j += 1
+            if items:
+                meta[key] = items
+                i = j
+                continue
+            # Empty value
+            meta[key] = ""
+            i += 1
+            continue
+
+        if rest.startswith("[") and rest.endswith("]"):
+            meta[key] = _parse_flow_list(rest)
+        else:
+            meta[key] = _coerce(rest)
+        i += 1
+
+    return meta, body
+
+
+def read_frontmatter(path: Path) -> tuple[dict[str, Any], str]:
+    """Read and parse a file with frontmatter."""
+    return parse_frontmatter(path.read_text())
 
 
 # ----- placeholder substitution -----
 
-def substitute(text: str, host: dict) -> str:
-    """Replace {{key}} placeholders with values from host config."""
+def substitute(text: str, ctx: dict) -> str:
+    """Replace {{key}} placeholders with values from ctx.
+
+    Callers can merge dicts to supply extra per-call values, e.g.
+    `substitute(template, {**host, "name_cap": "Surveyor"})`.
+    """
     def repl(m: re.Match) -> str:
         key = m.group(1).strip()
-        if key in host:
-            return str(host[key])
+        if key in ctx:
+            return str(ctx[key])
         raise KeyError(f"Unknown placeholder: {{{{{key}}}}}")
     return re.sub(r"\{\{\s*([a-z_]+)\s*\}\}", repl, text)
 
@@ -132,14 +217,14 @@ def render_agent_frontmatter(meta: dict, host: dict) -> str:
 
 def render_agent(src_path: Path, host: dict, target: Path) -> None:
     """Render a single agent file from commons/agents/<name>.md to the workspace."""
-    meta, body = _frontmatter.read(src_path)
+    meta, body = read_frontmatter(src_path)
     body = substitute(body, host)
     frontmatter = render_agent_frontmatter(meta, host)
 
     # Source bodies omit the heading; the host can prepend one via
     # `agent_body_prefix` (with `{{name_cap}}` interpolated).
     prefix_template = host.get("agent_body_prefix", "")
-    prefix = prefix_template.replace("{{name_cap}}", meta["name"].capitalize())
+    prefix = substitute(prefix_template, {**host, "name_cap": meta["name"].capitalize()})
     content = f"{frontmatter}\n\n{prefix}{body.lstrip()}"
 
     out_path = target / host["agents_dir"] / f"{meta['name']}.md"
@@ -149,7 +234,7 @@ def render_agent(src_path: Path, host: dict, target: Path) -> None:
 
 def render_agents(host: dict, target: Path) -> int:
     """Render all agents from commons/agents/. Returns count."""
-    src_dir = ROOT / "commons" / "agents"
+    src_dir = COMMONS / "agents"
     count = 0
     for src_path in sorted(src_dir.glob("*.md")):
         render_agent(src_path, host, target)
@@ -194,60 +279,67 @@ def _emit_yaml(fields: list[tuple[str, object]]) -> str:
     return "\n".join(lines)
 
 
-def render_skill(src_path: Path, host: dict, target: Path) -> None:
-    """Render a single skill from commons/skills/<name>.md to host-specific paths."""
-    meta, body = _frontmatter.read(src_path)
-    body = substitute(body, host)
+def _render_skill_claude(meta: dict, body: str, host: dict, target: Path) -> None:
+    """Render a skill into Claude's single-file layout: skills/<name>/SKILL.md."""
+    fields: list[tuple[str, object]] = [
+        ("name", meta["name"]),
+        ("description", meta["description"]),
+    ]
+    args_hint = meta.get("arguments_hint", "")
+    if args_hint:
+        # Claude uses `argument-hint:` (singular, hyphenated)
+        fields.append(("argument-hint", args_hint))
+    out_path = target / host["skills_dir"] / meta["name"] / "SKILL.md"
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(f"{_emit_yaml(fields)}\n\n{body.lstrip()}")
+
+
+def _render_skill_pi(meta: dict, body: str, host: dict, target: Path) -> None:
+    """Render a skill into Pi's two-file layout: a stub under skills/ and the
+    full workflow under prompts/."""
     name = meta["name"]
 
+    # 1. Stub: skills/<name>/SKILL.md — thin discovery pointer.
+    stub_fields = [("name", name), ("description", meta["description"])]
+    stub_path = target / host["skills_dir"] / name / "SKILL.md"
+    stub_path.parent.mkdir(parents=True, exist_ok=True)
+    stub_path.write_text(f"{_emit_yaml(stub_fields)}\n\n{_pi_stub_body(meta, host)}")
+
+    # 2. Prompt: prompts/<name>.md — the actual workflow body.
+    prompt_fields: list[tuple[str, object]] = [("description", meta["description"])]
+    args_hint = meta.get("arguments_hint", "")
+    if args_hint:
+        prompt_fields.append(("args", args_hint))
+    prompt_fields.append(("section", "PhysicsIntern Workflows"))
+    # Pi convention: every workflow is invocable as a top-level slash command
+    # by default. A skill can opt out with `top_level_cli: false` in its
+    # manifest (e.g. /autoresearch — driven from the main-agent context
+    # rather than offered as a fresh command).
+    if meta.get("top_level_cli", True):
+        prompt_fields.append(("topLevelCli", True))
+
+    prompt_body = host.get("preamble", "").lstrip() + "\n" + body.lstrip()
+    prompt_path = target / host["prompts_dir"] / f"{name}.md"
+    prompt_path.parent.mkdir(parents=True, exist_ok=True)
+    prompt_path.write_text(f"{_emit_yaml(prompt_fields)}\n\n{prompt_body}")
+
+
+def render_skill(src_path: Path, host: dict, target: Path) -> None:
+    """Render a single skill from commons/skills/<name>.md, dispatching by host."""
+    meta, body = read_frontmatter(src_path)
+    body = substitute(body, host)
+
     if host["name"] == "claude":
-        fields: list[tuple[str, object]] = [
-            ("name", name),
-            ("description", meta["description"]),
-        ]
-        args_hint = meta.get("arguments_hint", "")
-        if args_hint:
-            # Claude uses `argument-hint:` (singular, hyphenated)
-            fields.append(("argument-hint", args_hint))
-        out_path = target / host["skills_dir"] / name / "SKILL.md"
-        out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(f"{_emit_yaml(fields)}\n\n{body.lstrip()}")
-        return
-
-    if host["name"] == "pi":
-        # Pi emits two files: a stub under skills/ and the full workflow under prompts/.
-
-        # 1. Stub: skills/<name>/SKILL.md
-        stub_fields = [("name", name), ("description", meta["description"])]
-        stub_path = target / host["skills_dir"] / name / "SKILL.md"
-        stub_path.parent.mkdir(parents=True, exist_ok=True)
-        stub_path.write_text(f"{_emit_yaml(stub_fields)}\n\n{_pi_stub_body(meta, host)}")
-
-        # 2. Prompt: prompts/<name>.md
-        prompt_fields: list[tuple[str, object]] = [("description", meta["description"])]
-        args_hint = meta.get("arguments_hint", "")
-        if args_hint:
-            prompt_fields.append(("args", args_hint))
-        prompt_fields.append(("section", "PhysicsIntern Workflows"))
-        # Pi convention: every workflow is invocable as a top-level slash command
-        # by default. A skill can opt out with `top_level_cli: false` in its
-        # manifest (e.g. /autoresearch — driven from the main-agent context
-        # rather than offered as a fresh command).
-        if meta.get("top_level_cli", True):
-            prompt_fields.append(("topLevelCli", True))
-
-        prompt_body = host.get("preamble", "").lstrip() + "\n" + body.lstrip()
-        prompt_path = target / host["prompts_dir"] / f"{name}.md"
-        prompt_path.parent.mkdir(parents=True, exist_ok=True)
-        prompt_path.write_text(f"{_emit_yaml(prompt_fields)}\n\n{prompt_body}")
-        return
-
-    raise ValueError(f"Unknown host: {host['name']}")
+        _render_skill_claude(meta, body, host, target)
+    elif host["name"] == "pi":
+        _render_skill_pi(meta, body, host, target)
+    else:
+        raise ValueError(f"Unknown host: {host['name']}")
 
 
 def render_skills(host: dict, target: Path) -> int:
     """Render all skills from commons/skills/. Returns count."""
-    src_dir = ROOT / "commons" / "skills"
+    src_dir = COMMONS / "skills"
     count = 0
     for src_path in sorted(src_dir.glob("*.md")):
         render_skill(src_path, host, target)
@@ -255,24 +347,17 @@ def render_skills(host: dict, target: Path) -> int:
     return count
 
 
-def render_workspace_doc(host: dict, target: Path) -> None:
-    """Render commons/workspace-doc.md to <target>/<workspace_doc>."""
-    src = (ROOT / "commons" / "workspace-doc.md").read_text()
+def render_commons_file(src_name: str, dst_name: str, host: dict, target: Path) -> None:
+    """Substitute placeholders in commons/<src_name> and write to <target>/<dst_name>."""
+    src = (COMMONS / src_name).read_text()
     rendered = substitute(src, host)
-    (target / host["workspace_doc"]).write_text(rendered)
-
-
-def render_research_log(host: dict, target: Path) -> None:
-    """Render commons/research_log.md to <target>/research_log.md."""
-    src = (ROOT / "commons" / "research_log.md").read_text()
-    rendered = substitute(src, host)
-    (target / "research_log.md").write_text(rendered)
+    (target / dst_name).write_text(rendered)
 
 
 def render_gitignore(host: dict, target: Path) -> None:
     """Render commons/gitignore + optional hosts/<host>/gitignore.extra to <target>/.gitignore."""
-    src = (ROOT / "commons" / "gitignore").read_text()
-    extra_path = ROOT / "hosts" / host["name"] / "gitignore.extra"
+    src = (COMMONS / "gitignore").read_text()
+    extra_path = HOSTS / host["name"] / "gitignore.extra"
     if extra_path.exists():
         src += extra_path.read_text()
     (target / ".gitignore").write_text(src)
@@ -284,7 +369,7 @@ def render_host_extras(host: dict, target: Path) -> None:
     Looks for files under hosts/<host>/extras/<relative-path>. Each is copied
     to <target>/<relative-path>, preserving subdirectory structure.
     """
-    extras_dir = ROOT / "hosts" / host["name"] / "extras"
+    extras_dir = HOSTS / host["name"] / "extras"
     if not extras_dir.exists():
         return
     for src in extras_dir.rglob("*"):
@@ -297,10 +382,10 @@ def render_host_extras(host: dict, target: Path) -> None:
 
 def load_host(host_name: str) -> dict:
     """Load the host config dict and enrich with file-backed values."""
-    with (ROOT / "hosts" / host_name / "host.toml").open("rb") as f:
+    with (HOSTS / host_name / "host.toml").open("rb") as f:
         host = tomllib.load(f)
     for key, filename in host.pop("file_backed", {}).items():
-        path = ROOT / "hosts" / host_name / filename
+        path = HOSTS / host_name / filename
         host[key] = path.read_text() if path.exists() else ""
     return host
 
@@ -317,14 +402,14 @@ def main() -> int:
 
     n_agents = render_agents(host, target)
     n_skills = render_skills(host, target)
-    render_workspace_doc(host, target)
-    render_research_log(host, target)
+    render_commons_file("workspace-doc.md", host["workspace_doc"], host, target)
+    render_commons_file("research_log.md", "research_log.md", host, target)
     render_gitignore(host, target)
     render_host_extras(host, target)
 
     print(
         f"Rendered host={args.host}: {n_agents} agents + {n_skills} skills "
-        f"+ workspace doc + research_log + .gitignore → {target}",
+        f"+ workspace doc + research_log + .gitignore + host extras → {target}",
         file=sys.stderr,
     )
     return 0

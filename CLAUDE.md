@@ -5,8 +5,8 @@ In this repo we develop and maintain the core methodology and skills for Physics
 ## Rules
 
 - **Do not over-engineer the skills.** The goal is a robust system that works on new problems. Skill prompts should be as simple as possible while still being effective. Avoid complex, verbose, or ad-hoc instructions that aren't essential to the core methodology.
-- **Edit `commons/`, not `templates/`.** The methodology source of truth is `commons/` (agents, skills, workspace doc) plus `hosts/<host>/` (host-specific glue). `templates/` and `templates-pi/` are kept only as legacy reference and are not used by the bootstrap script.
-- **Render before testing changes.** After editing anything under `commons/` or `hosts/`, run `bash init-physics-intern.sh --host=<host> <tmpdir>` (or call `bootstrap/render.py` directly) to verify the output before committing.
+- **Source-of-truth is `commons/` + `hosts/<host>/`.** Methodology edits go there — `commons/` for host-agnostic agents, skills, and workspace doc; `hosts/<host>/` for host-specific glue (tool names, frontmatter shape, dispatch syntax). Rendered workspaces (e.g. under `workspaces/`) are snapshots — re-render rather than backporting edits.
+- **Render before testing changes.** After editing anything under `commons/` or `hosts/`, run `bash init-physics-intern.sh --host=<host> <tmpdir>` (or call `commons/render.py` directly) to verify the output before committing.
 
 ## Development skills
 
