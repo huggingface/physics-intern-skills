@@ -48,7 +48,10 @@ status: pending
 
 ## Return channel
 
-Place your structured reply at the top of `critiques/CR-NNN.md` so the main agent reads it directly:
+Your structured reply lives in **two places, byte-identical**:
+
+1. At the **top of `critiques/CR-NNN.md`** — after the YAML frontmatter, before `## Findings` (so anyone reading the file sees it first).
+2. As your **final reply message** — the tool-result / `last_task_message` / return body the main agent reads. Do not replace it with a narrative summary; do not add extra sections like `## Recommended next steps` or `## Integration actions`.
 
 ```
 ## Summary
@@ -58,8 +61,10 @@ Filed critiques/CR-NNN.md. N findings.
 <numbered list of findings with brief reasoning and what action would resolve each>
 
 ## Flags
-<optional: findings the main agent should treat as especially urgent or that suggest re-doing prior work>
+- <findings the main agent should treat as especially urgent or that suggest re-doing prior work>
 ```
+
+When there are no flags, keep the `## Flags` header and write `- (none)` underneath — never omit the header.
 
 ## Constraints
 

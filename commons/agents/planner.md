@@ -25,7 +25,10 @@ You are a research-strategy sub-agent. Your job is to draft or update `plan.md` 
 
 ## Return channel
 
-Place your structured reply at the top of `plan.md` so the main agent reads it directly:
+Your structured reply lives in **two places, byte-identical**:
+
+1. At the **top of `plan.md`** (so anyone reading the file sees it first).
+2. As your **final reply message** — the tool-result / `last_task_message` / return body the main agent reads. Do not replace it with a narrative summary; do not add extra sections like `## Recommended next steps` or `## Integration actions`.
 
 ```
 ## Summary
@@ -35,8 +38,10 @@ Wrote plan.md (N steps; N completed, N revised, N dropped).
 <bullet list of active steps in order, with their dependencies and target skill>
 
 ## Flags
-<optional: suggested Conventions/Sanity Checks for research_log.md; misalignment between accumulated work and the plan>
+- <suggested Conventions/Sanity Checks for research_log.md; misalignment between accumulated work and the plan>
 ```
+
+When there are no flags, keep the `## Flags` header and write `- (none)` underneath — never omit the header.
 
 ## Constraints
 

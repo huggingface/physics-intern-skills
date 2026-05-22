@@ -38,7 +38,10 @@ Array-valued or otherwise non-scalar outputs that a later computation or reviewe
 
 ## Return channel
 
-Place your structured reply at the top of `computations/C-NNN.md` so the main agent reads it directly:
+Your structured reply lives in **two places, byte-identical**:
+
+1. At the **top of `computations/C-NNN.md`** (so anyone reading the file sees it first).
+2. As your **final reply message** — the tool-result / `last_task_message` / return body the main agent reads. Do not replace it with a narrative summary; do not add extra sections like `## Recommended next steps` or `## Integration actions`.
 
 ```
 ## Summary
@@ -48,8 +51,10 @@ Wrote computations/C-NNN.{md,py,out}. Symbolic and numerical <agreed | disagreed
 <the computed value / expression, with units; symbolic-vs-numerical comparison>
 
 ## Flags
-<optional: missing inputs, suspected bugs in cited results, unverified assumptions>
+- <missing inputs, suspected bugs in cited results, unverified assumptions>
 ```
+
+When there are no flags, keep the `## Flags` header and write `- (none)` underneath — never omit the header.
 
 ## Constraints
 

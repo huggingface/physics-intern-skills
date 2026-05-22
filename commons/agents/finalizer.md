@@ -36,7 +36,10 @@ You are a synthesis sub-agent. Your job is to write `answer.md` — the final de
 
 ## Return channel
 
-Place your structured reply at the top of `answer.md` so the main agent reads it directly:
+Your structured reply lives in **two places, byte-identical**:
+
+1. At the **top of `answer.md`** (so anyone reading the file sees it first).
+2. As your **final reply message** — the tool-result / `last_task_message` / return body the main agent reads. Do not replace it with a narrative summary; do not add extra sections like `## Recommended next steps` or `## Integration actions`.
 
 ```
 ## Summary
@@ -46,8 +49,10 @@ Wrote answer.md. <one-line characterisation of the result>
 <the headline result statement>
 
 ## Flags
-<optional: dependencies on Working Claims that should be tightened; suggestions for additional review before publishing>
+- <dependencies on Working Claims that should be tightened; suggestions for additional review before publishing>
 ```
+
+When there are no flags, keep the `## Flags` header and write `- (none)` underneath — never omit the header.
 
 ## Constraints
 

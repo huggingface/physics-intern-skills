@@ -28,7 +28,10 @@ You are a research-survey sub-agent. Your job is to orient the main agent for th
 
 ## Return channel
 
-Place your structured reply at the top of `survey.md` so the main agent reads it directly:
+Your structured reply lives in **two places, byte-identical**:
+
+1. At the **top of `survey.md`** (so anyone reading the file sees it first).
+2. As your **final reply message** — the tool-result / `last_task_message` / return body the main agent reads. Do not replace it with a narrative summary; do not add extra sections like `## Recommended next steps` or `## Integration actions`.
 
 ```
 ## Summary
@@ -38,8 +41,10 @@ Wrote survey.md (N sections, N references annotated).
 <3–5 bullets: main approaches identified, main pitfalls, most important reference. If Known approaches flags a load-bearing disagreement among candidates, say so explicitly in one bullet so the main agent knows a framing decision will be required.>
 
 ## Flags
-<optional: out-of-band observations, e.g. a convention mismatch in the literature>
+- <out-of-band observations, e.g. a convention mismatch in the literature>
 ```
+
+When there are no flags, keep the `## Flags` header and write `- (none)` underneath — never omit the header.
 
 ## Constraints
 

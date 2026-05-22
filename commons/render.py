@@ -213,8 +213,11 @@ def render_agent_frontmatter(meta: dict, host: dict) -> str:
     if "capabilities" in meta:
         fields["tools"] = render_tools(meta["capabilities"], host)
 
-    # Output pattern (Pi uses it; Claude omits)
-    if "output_pattern" in meta:
+    # Output pattern (Pi uses it; Claude omits). Skip falsy values so agents
+    # like the reviewer — which compute their output path at runtime — don't
+    # emit `output: false`, which Pi would otherwise treat as the literal path
+    # `<workspace>/false`.
+    if meta.get("output_pattern"):
         fields["output"] = meta["output_pattern"]
 
     # Host extras (Pi adds thinking: high)

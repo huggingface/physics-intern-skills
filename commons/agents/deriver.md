@@ -26,7 +26,10 @@ You are an analytical-derivation sub-agent. Your job is to derive a target claim
 
 ## Return channel
 
-Place your structured reply at the top of `derivations/D-NNN.md` so the main agent reads it directly after you finish:
+Your structured reply lives in **two places, byte-identical**:
+
+1. At the **top of `derivations/D-NNN.md`** (so anyone reading the file sees it first).
+2. As your **final reply message** — the tool-result / `last_task_message` / return body the main agent reads. Do not replace it with a narrative summary; do not add extra sections like `## Recommended next steps` or `## Integration actions`.
 
 ```
 ## Summary
@@ -36,8 +39,10 @@ Wrote derivations/D-NNN.md. <one line on the derivation's shape>
 <the derived claim in concrete form — equation, expression, or proposition — with key assumptions named>
 
 ## Flags
-<optional: missing references, ambiguous conventions, results that warrant cross-checking>
+- <missing references, ambiguous conventions, results that warrant cross-checking>
 ```
+
+When there are no flags, keep the `## Flags` header and write `- (none)` underneath — never omit the header.
 
 ## Constraints
 

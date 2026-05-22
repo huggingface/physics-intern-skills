@@ -60,6 +60,8 @@ The `verdict:` frontmatter field must match the verdict word in `## Verdict`. Th
 
 ## Return channel
 
+Your **final reply message** — the tool-result / `last_task_message` / return body the main agent reads — is exactly this structured block. Do not replace it with a narrative summary; do not add extra sections like `## Recommended next steps` or `## Integration actions`. (The review file itself uses the `# Review of …` structure described above; this block is the reply only.)
+
 ```
 ## Summary
 Reviewed <D-NNN | C-NNN>. Verdict: <confirmed | refuted | inconclusive>. Wrote <output path>.
@@ -68,8 +70,10 @@ Reviewed <D-NNN | C-NNN>. Verdict: <confirmed | refuted | inconclusive>. Wrote <
 <one-paragraph summary of the verdict and key reasoning>
 
 ## Flags
-<optional: a concern that goes beyond this one artefact — e.g. a convention issue, a related claim that should also be reviewed>
+- <a concern that goes beyond this one artefact — e.g. a convention issue, a related claim that should also be reviewed>
 ```
+
+When there are no flags, keep the `## Flags` header and write `- (none)` underneath — never omit the header.
 
 ## Constraints
 

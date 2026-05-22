@@ -89,7 +89,7 @@ For `/review`, pass the target ID and any small context (relevant Established Re
 
 This is the load-bearing operational discipline. Run it in order, every time:
 
-1. **Read** the `## Summary` / `## Result` / `## Flags` from the sub-agent.
+1. **Read** the `## Summary` / `## Result` / `## Flags` from the sub-agent. The block arrives via the reply message (the tool-result / `last_task_message` / `subagent` return body, depending on the host) and is duplicated at the top of the artefact file. They should match byte-for-byte; if they diverge, treat it as a flag.
 2. **Integrate** into `research_log.md` — update the relevant Working Claim or Established Result, source list, dependencies. Reconcile the invariants in §2.
 3. **Disposition every flag** in `notes/flags.md` with one line per flag:
    `[skill][artefact-id] <flag summary> → accepted/dismissed/deferred (one-line reason)`.
