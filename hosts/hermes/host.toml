@@ -1,9 +1,9 @@
 # Hermes Agent host configuration.
 #
 # Hermes loads AGENTS.md as project context and discovers slash-command skills
-# from configured skills directories. The rendered workspace stores its
-# PhysicsIntern skills under .hermes/skills; users add that directory to
-# skills.external_dirs (or install/copy the skills) before launching Hermes.
+# from installed skills directories. `init-physics-intern.sh host=hermes`
+# renders these skills to a temporary directory, then copies them into
+# ~/.hermes/skills/ (or $HERMES_HOME/skills) for Hermes discovery.
 
 name = "hermes"
 workspace_doc = "AGENTS.md"

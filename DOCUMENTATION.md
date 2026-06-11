@@ -43,7 +43,7 @@ physics-intern/
 ├── README.md                          # user-facing: install, launch, how to use
 ├── DOCUMENTATION.md                   # this file: developer documentation
 ├── CLAUDE.md                          # repo-level instructions (not for workspaces)
-├── init-physics-intern.sh             # workspace bootstrap script
+├── init-physics-intern.sh             # workspace bootstrap / Hermes skill installer
 ├── commons/                           # host-agnostic source of truth
 │   ├── render.py                      # renderer: reads commons/ + hosts/<host>/
 │   ├── workspace-doc.md               # body of CLAUDE.md / AGENTS.md (with placeholders)
@@ -121,7 +121,7 @@ It performs, in order:
 
 1. **Load the host config** — `hosts/<host>/host.toml` plus any `file_backed` entries (e.g. `preamble = "preamble.md"`).
 2. **Render agents** — one file per `commons/agents/<name>.md`. The body is substituted (`{{…}}` placeholders), and the manifest fields (`name`, `description`, `capabilities`, `output_pattern`) are projected onto the host's frontmatter or TOML role file. Capabilities are mapped to host-specific tool names via `tools_map`.
-3. **Render skills** — one file (Claude / Codex / Hermes single-file `SKILL.md`) or two (Pi: stub under `skills/<name>/SKILL.md` + workflow under `prompts/<name>.md`) per `commons/skills/<name>.md`.
+3. **Render skills** — one file (Claude / Codex / Hermes single-file `SKILL.md`) or two (Pi: stub under `skills/<name>/SKILL.md` + workflow under `prompts/<name>.md`) per `commons/skills/<name>.md`. For Hermes installation (`./init-physics-intern.sh host=hermes`), the bootstrap script renders to a temporary directory and copies the rendered PhysicsIntern skills into the active Hermes home (`~/.hermes/skills/` by default, or `$HERMES_HOME/skills` when set), then discards the temporary render.
 4. **Render the workspace doc** — `commons/workspace-doc.md` → `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, Hermes). Placeholders like `{{workspace_doc}}` and `{{dispatch_example}}` are substituted from the host config.
 5. **Render `research_log.md`** — substituted from the same template.
 6. **Render `.gitignore`** — `commons/gitignore` plus optional `hosts/<host>/gitignore.extra`.
@@ -278,14 +278,14 @@ Optional:
 - **Claude** — single-file skill layout, YAML+markdown agents. Dispatch via the `Task` tool with `subagent_type=<agent name>`. Settings file at `.claude/settings.json`.
 - **Pi** — two-file skill layout (stub + prompt), YAML+markdown agents. Dispatch via Pi's `subagent` tool (JSON payload). Workspace launch: `pi install -l .` (registers the project as a local Pi package and installs `pi-subagents` + `pi-web-access` from `.pi/settings.json`), then `pi`.
 - **Codex CLI** — single-file skill layout (like Claude), but agents are **TOML files** registered as `[agent_roles.<name>]` blocks in `.codex/config.toml`. Dispatch via `spawn_agent` + `wait_agent` (Codex's `multi_agents_v2` namespace, under active OpenAI development). Workspace launch: `codex`, then accept the project-trust prompt on first run so `config.toml` is honoured.
-- **Hermes Agent** — single-file skill layout under `.hermes/skills`, YAML+markdown role prompts under `.hermes/agents`, and project context in `AGENTS.md`. Dispatch via `delegate_task`; the main agent passes the role file path, task context, and appropriate `toolsets`, then verifies the written artefact before integration. Workspace launch: add `<workspace>/.hermes/skills` to Hermes `skills.external_dirs`, restart Hermes, then run `hermes` in the workspace.
+- **Hermes Agent** — single-file skill layout rendered under `.hermes/skills`, YAML+markdown role prompts under `.hermes/agents`, and project context in `AGENTS.md` when an explicit Hermes workspace target is rendered. Normal Hermes setup is install-only: `./init-physics-intern.sh host=hermes` renders to a temporary directory, copies the nine PhysicsIntern skills into the active Hermes home (`~/.hermes/skills/` by default, or `$HERMES_HOME/skills` when set), and does not create a workspace in the current directory. Dispatch via `delegate_task`; the main agent passes the role file path, task context, and appropriate `toolsets`, then verifies the written artefact before integration. Restart any already-running Hermes session after installation, then run `hermes` from the directory where you want to work.
 
 
 ## The workspace doc and research log
 
 ### `commons/workspace-doc.md`
 
-This is the main-agent prompt that becomes `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex) in every workspace. It encodes the entire operational discipline: the integration loop, the workspace layout, the file ownership matrix, the `research_log.md` invariants, the dispatch model, the fresh-context rule for review and critique, the checks-and-balances rule.
+This is the main-agent prompt that becomes `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, and explicit Hermes workspace renders). It encodes the entire operational discipline: the integration loop, the workspace layout, the file ownership matrix, the `research_log.md` invariants, the dispatch model, the fresh-context rule for review and critique, the checks-and-balances rule.
 
 Edit this file when the operational discipline changes — what files the main agent edits, how it integrates returns, how it handles flags, how it commits.
 
@@ -300,14 +300,17 @@ The invariants enforced on `research_log.md` (citation discipline, robust eviden
 
 `init-physics-intern.sh` is a thin shell wrapper around `commons/render.py`. It:
 
-1. Parses `--host` (defaults to `claude`) and the target directory (defaults to `.`).
-2. Detects an existing PhysicsIntern workspace in the target (by probing for `.claude/` + `CLAUDE.md`, `.codex/` + `AGENTS.md`, `.hermes/` + `AGENTS.md`, or `.pi/` + `AGENTS.md` containing the marker `PhysicsIntern workspace`). If found, prompts for a reset (everything except `problem.md` is wiped).
-3. Calls `python3 commons/render.py --host=<host> --target=<abs-path>`.
-4. Scaffolds `problem.md` if missing (setup + main question headings).
-5. Creates the artefact directories with `.gitkeep` (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`).
-6. Seeds `notes/flags.md` with the flag-disposition format docstring.
-7. Runs `git init` if needed, stages everything, and makes the bootstrap commit.
-8. Prints a host-specific launch hint.
+1. Parses `--host` (defaults to `claude`; `host=<name>` is accepted as a shorthand) and the target directory (defaults to `.`).
+2. If invoked as `./init-physics-intern.sh host=hermes` (or `--host=hermes`) with no target, renders Hermes files into a temporary directory, copies the PhysicsIntern skills into the active Hermes home (`~/.hermes/skills/` by default, or `$HERMES_HOME/skills` when set), removes the temporary render, and exits without creating a workspace.
+3. Refuses no-target initialization from the PhysicsIntern methodology source checkout for non-Hermes workspace bootstraps, which prevents accidentally resetting the repository itself when the user meant to pass a target workspace directory.
+4. Detects an existing PhysicsIntern workspace in the target (by probing for `.claude/` + `CLAUDE.md`, `.codex/` + `AGENTS.md`, `.hermes/` + `AGENTS.md`, or `.pi/` + `AGENTS.md` containing the marker `PhysicsIntern workspace`). If found, prompts for a reset (everything except `problem.md` is wiped).
+5. Calls `python3 commons/render.py --host=<host> --target=<abs-path>`.
+6. For Hermes with an explicit target, also copies the rendered PhysicsIntern skills into the active Hermes home so `/survey`, `/derive`, etc. are installed through Hermes' normal skill discovery.
+7. Scaffolds `problem.md` if missing (setup + main question headings).
+8. Creates the artefact directories with `.gitkeep` (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`).
+9. Seeds `notes/flags.md` with the flag-disposition format docstring.
+10. Runs `git init` if needed, stages everything, and makes the bootstrap commit.
+11. Prints a host-specific launch hint.
 
 Reset path: triggered by the existing-workspace prompt. Removes `.git/`, all rendered host files, all artefact directories, and any other top-level entries — `problem.md` is preserved. The bootstrap commit message becomes "Re-initialize PhysicsIntern workspace (reset, problem.md preserved, host: …)".
 

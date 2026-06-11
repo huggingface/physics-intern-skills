@@ -13,6 +13,7 @@ When the user asks a "how does this work" question, decide which doc fits before
 - **Do not over-engineer the skills.** The goal is a robust system that works on new problems. Skill prompts should be as simple as possible while still being effective. Avoid complex, verbose, or ad-hoc instructions that aren't essential to the core methodology.
 - **Source-of-truth is `commons/` + `hosts/<host>/`.** Methodology edits go there — `commons/` for host-agnostic agents, skills, and workspace doc; `hosts/<host>/` for host-specific glue (tool names, frontmatter shape, dispatch syntax). Rendered workspaces (e.g. under `workspaces/`) are snapshots — re-render rather than backporting edits.
 - **Render before testing changes.** After editing anything under `commons/` or `hosts/`, run `bash init-physics-intern.sh --host=<host> <tmpdir>` (or call `commons/render.py` directly) to verify the output before committing.
+- **Hermes skill installation.** `init-physics-intern.sh host=hermes` installs the PhysicsIntern skills into the active Hermes home (`~/.hermes/skills/` by default, or `$HERMES_HOME/skills` when set) without creating a workspace. Do not tell users to configure external skill directories for PhysicsIntern workspaces.
 
 ## Development skills
 
