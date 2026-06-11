@@ -2,14 +2,14 @@
 """Render PhysicsIntern workspace files for a given host.
 
 Usage:
-  render.py --host=claude|pi --target=<dir>
+  render.py --host=claude|pi|codex|hermes --target=<dir>
 
 Reads source files under commons/ (host-agnostic methodology) and host configuration
 under hosts/<host>/, and writes rendered files into <target>.
 
 Source files use mustache-style placeholders ({{workspace_doc}}, {{agents_dir}})
 that are substituted from the host config. Agent capabilities (file_read, glob,
-…) are translated to host-specific tool names via hosts/<host>/host.py.
+…) are translated to host-specific tool names via hosts/<host>/host.toml.
 
 Requires Python 3.11+ (uses stdlib `tomllib`); no third-party packages.
 """
@@ -407,11 +407,11 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
     meta, body = read_frontmatter(src_path)
     body = substitute(body, host)
 
-    if host["name"] in ("claude", "codex"):
-        # Codex skills use the same single-file SKILL.md layout as Claude
-        # (frontmatter `name:` + `description:`, markdown body). The only
+    if host["name"] in ("claude", "codex", "hermes"):
+        # Codex and Hermes skills use the same single-file SKILL.md layout as
+        # Claude (frontmatter `name:` + `description:`, markdown body). The
         # difference is the discovery root, controlled by `skills_dir` in
-        # host.toml (.claude/skills/ vs .agents/skills/).
+        # host.toml (.claude/skills/ vs .agents/skills/ vs .hermes/skills/).
         _render_skill_claude(meta, body, host, target)
     elif host["name"] == "pi":
         _render_skill_pi(meta, body, host, target)
@@ -474,7 +474,7 @@ def load_host(host_name: str) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", required=True, choices=["claude", "pi", "codex"])
+    parser.add_argument("--host", required=True, choices=["claude", "pi", "codex", "hermes"])
     parser.add_argument("--target", required=True, type=Path)
     args = parser.parse_args()
 

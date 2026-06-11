@@ -1,8 +1,8 @@
 # PhysicsIntern
 
-A methodology package for using AI coding agents (Claude Code, Pi, OpenAI Codex CLI) to conduct theoretical physics and mathematics research. Drop a research question into `problem.md`, run a single bootstrap command, launch your agent, and run `/survey` to begin. The agent handles the rest — surveying the literature, drafting a plan, dispatching analytical derivations and numerical computations to fresh-context sub-agents, reviewing each result, and synthesising the final answer into `answer.md`.
+A methodology package for using AI coding agents (Claude Code, Pi, OpenAI Codex CLI, Hermes Agent) to conduct theoretical physics and mathematics research. Drop a research question into `problem.md`, run a single bootstrap command, launch your agent, and run `/survey` to begin. The agent handles the rest — surveying the literature, drafting a plan, dispatching analytical derivations and numerical computations to fresh-context sub-agents, reviewing each result, and synthesising the final answer into `answer.md`.
 
-PhysicsIntern is **host-agnostic**: the same methodology runs on three coding-agent hosts, with the host chosen at workspace-creation time. Files are durable state, the session is ephemeral — you can clear the context at any time and the agent picks up from `research_log.md` and `plan.md`.
+PhysicsIntern is **host-agnostic**: the same methodology runs on four coding-agent hosts. Claude Code, Pi, and Codex use rendered workspaces; Hermes installs the PhysicsIntern workflow skills into Hermes' normal skills directory. Files are durable state, the session is ephemeral — you can clear the context at any time and the agent picks up from `research_log.md` and `plan.md`.
 
 > **Working on the methodology itself?** See [DOCUMENTATION.md](DOCUMENTATION.md) for the developer documentation: render pipeline, agent/skill authoring contracts, host glue, and the audit workflow.
 
@@ -14,6 +14,7 @@ PhysicsIntern is **host-agnostic**: the same methodology runs on three coding-ag
   - **[Claude Code](https://claude.com/claude-code)** (default) — `claude` on your PATH.
   - **[Pi](https://pi.dev)** — `pi` on your PATH.
   - **[OpenAI Codex CLI](https://github.com/openai/codex)** — `codex` on your PATH.
+  - **[Hermes Agent](https://hermes-agent.nousresearch.com/docs)** — `hermes` on your PATH.
 
 The agent host provides web search, Python execution, and sub-agent dispatch. PhysicsIntern does not need any API keys of its own.
 
@@ -40,7 +41,7 @@ That's it. The agent will work through the research arc, dispatching sub-agents,
 
 ## Hosts
 
-Pick a host at workspace-creation time via `--host`. Same methodology in every case; the launch sequence differs.
+Pick a host at setup time. Same methodology in every case; the launch sequence differs. For Claude Code, Pi, and Codex, run the bootstrap from the methodology repo and pass a target workspace directory rather than initializing the repo itself. Hermes is the exception: `host=hermes` with no target installs the PhysicsIntern skills into Hermes directly.
 
 ### Claude Code (default)
 
@@ -76,13 +77,27 @@ codex                                           # on first run, accept the "trus
 
 Sub-agent dispatch on Codex uses `spawn_agent` + `wait_agent` from the `multi_agents_v2` namespace, which is under active OpenAI development.
 
+### Hermes Agent
+
+```bash
+./init-physics-intern.sh host=hermes              # installs skills to ~/.hermes/skills/
+cd /path/to/your/research-or-project-directory
+hermes
+> /start-research
+> /survey
+```
+
+Sub-agent dispatch on Hermes uses the `delegate_task` tool. Hermes discovers slash-command skills from `~/.hermes/skills/` (or `$HERMES_HOME/skills` when set), so `./init-physics-intern.sh host=hermes` installs the PhysicsIntern skills there without creating a workspace in the current directory. Restart any already-running Hermes session after installation so `/survey`, `/derive`, etc. appear.
+
 
 ## What `init-physics-intern.sh` does
 
-The bootstrap script renders a workspace from this repo's templates:
+The bootstrap script renders a workspace from this repo's templates for Claude Code, Pi, Codex, and explicit Hermes workspace targets. `host=hermes` with no target only installs Hermes skills:
 
-- Creates `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex) — the main-agent prompt encoding the entire research methodology.
-- Renders the seven sub-agent role prompts and nine workflow skills into the host's expected layout.
+- For workspace renders, creates `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, Hermes) — the main-agent prompt encoding the entire research methodology.
+- Renders the seven sub-agent role prompts and nine workflow skills into the host's expected layout. In Hermes install-only mode, this render happens in a temporary directory used only as the copy source.
+- For Hermes with no target (`./init-physics-intern.sh host=hermes`), renders to a temporary directory and copies the PhysicsIntern skills into `~/.hermes/skills/` (or `$HERMES_HOME/skills` when set) so Hermes can discover the slash commands.
+- For Hermes with an explicit target, also leaves a provenance copy under `<target>/.hermes/skills/`.
 - Scaffolds `problem.md` with empty `### Problem setup` and `### Main question` blocks if you haven't written one.
 - Creates artefact directories (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`).
 - Seeds `notes/flags.md` (where the main agent logs its handling of sub-agent flags).
@@ -159,5 +174,5 @@ If you want to inspect what the agent has been doing, `git log` is authoritative
 ## Limitations and next steps
 
 - **No MCP integrations ship today.** `/compute` uses SymPy + NumPy; `/survey` uses the host's built-in web search. Planned but not implemented: `mcp-arxiv`, `mcp-papers` (index `references/`), `mcp-mathematica` (symbolic backend for licence-holders), tensor-algebra backends.
-- **Three hosts supported.** Claude Code, Pi, OpenAI Codex CLI. OpenCode, Gemini CLI, Goose are not implemented yet — adding one is a folder under `hosts/`; see [DOCUMENTATION.md](DOCUMENTATION.md#adding-a-new-host).
+- **Four hosts supported.** Claude Code, Pi, OpenAI Codex CLI, Hermes Agent. OpenCode, Gemini CLI, Goose are not implemented yet — adding one is a folder under `hosts/`; see [DOCUMENTATION.md](DOCUMENTATION.md#adding-a-new-host).
 - **No workspace upgrade path.** Changes to the methodology propagate to **new** workspaces on the next `init-physics-intern.sh` run. Existing workspaces keep whatever version they were created with, unless you re-run the bootstrap with reset (which preserves `problem.md` only).

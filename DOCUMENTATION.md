@@ -23,7 +23,7 @@ This document is for contributors working on the PhysicsIntern methodology itsel
 
 ## What this repo is (and isn't)
 
-This repo holds the **methodology** — the prompts, the render pipeline, and the workspace template — that turn an AI coding harness (Claude Code, Pi, Codex CLI) into a research collaborator for theoretical physics and mathematics. The host already provides tool-use loops, sub-agent dispatch, sandboxed Python, web search, and slash-command-as-skill; we don't rebuild those. We layer on top: structured survey, explicit plan, fresh-context derivations and adversarial reviews, strategic critique, systematic symbolic + numerical cross-checking, citation discipline.
+This repo holds the **methodology** — the prompts, the render pipeline, and the workspace template — that turn an AI coding harness (Claude Code, Pi, Codex CLI, Hermes Agent) into a research collaborator for theoretical physics and mathematics. The host already provides tool-use loops, sub-agent dispatch, sandboxed Python, web search, and slash-command-as-skill; we don't rebuild those. We layer on top: structured survey, explicit plan, fresh-context derivations and adversarial reviews, strategic critique, systematic symbolic + numerical cross-checking, citation discipline.
 
 What lives here:
 
@@ -43,7 +43,7 @@ physics-intern/
 ├── README.md                          # user-facing: install, launch, how to use
 ├── DOCUMENTATION.md                   # this file: developer documentation
 ├── CLAUDE.md                          # repo-level instructions (not for workspaces)
-├── init-physics-intern.sh             # workspace bootstrap script
+├── init-physics-intern.sh             # workspace bootstrap / Hermes skill installer
 ├── commons/                           # host-agnostic source of truth
 │   ├── render.py                      # renderer: reads commons/ + hosts/<host>/
 │   ├── workspace-doc.md               # body of CLAUDE.md / AGENTS.md (with placeholders)
@@ -81,11 +81,15 @@ physics-intern/
 │   │   └── extras/
 │   │       ├── package.json
 │   │       └── .pi/settings.json
-│   └── codex/
+│   ├── codex/
 │       ├── host.toml                  # agent_format="toml"; tools collapse onto shell_command + apply_patch
 │       ├── preamble.md                # Codex tool discipline
 │       ├── dispatch_example.md        # spawn_agent + wait_agent example
 │       └── extras/.codex/config.toml  # sandbox + web_search; renderer appends [agent_roles.*] blocks
+│   └── hermes/
+│       ├── host.toml                  # Hermes AGENTS.md + .hermes/skills + delegate_task dispatch
+│       ├── preamble.md                # Hermes tool discipline
+│       └── dispatch_example.md        # delegate_task example
 ├── .claude/skills/
 │   └── investigate-run/               # repo-level audit skill
 ├── workspaces/                        # sample workspaces (methodology test runs and real research)
@@ -117,8 +121,8 @@ It performs, in order:
 
 1. **Load the host config** — `hosts/<host>/host.toml` plus any `file_backed` entries (e.g. `preamble = "preamble.md"`).
 2. **Render agents** — one file per `commons/agents/<name>.md`. The body is substituted (`{{…}}` placeholders), and the manifest fields (`name`, `description`, `capabilities`, `output_pattern`) are projected onto the host's frontmatter or TOML role file. Capabilities are mapped to host-specific tool names via `tools_map`.
-3. **Render skills** — one file (Claude / Codex single-file `SKILL.md`) or two (Pi: stub under `skills/<name>/SKILL.md` + workflow under `prompts/<name>.md`) per `commons/skills/<name>.md`.
-4. **Render the workspace doc** — `commons/workspace-doc.md` → `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex). Placeholders like `{{workspace_doc}}` and `{{dispatch_example}}` are substituted from the host config.
+3. **Render skills** — one file (Claude / Codex / Hermes single-file `SKILL.md`) or two (Pi: stub under `skills/<name>/SKILL.md` + workflow under `prompts/<name>.md`) per `commons/skills/<name>.md`. For Hermes installation (`./init-physics-intern.sh host=hermes`), the bootstrap script renders to a temporary directory and copies the rendered PhysicsIntern skills into the active Hermes home (`~/.hermes/skills/` by default, or `$HERMES_HOME/skills` when set), then discards the temporary render.
+4. **Render the workspace doc** — `commons/workspace-doc.md` → `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, Hermes). Placeholders like `{{workspace_doc}}` and `{{dispatch_example}}` are substituted from the host config.
 5. **Render `research_log.md`** — substituted from the same template.
 6. **Render `.gitignore`** — `commons/gitignore` plus optional `hosts/<host>/gitignore.extra`.
 7. **Copy host extras** — every file under `hosts/<host>/extras/` is copied to the workspace, preserving relative paths.
@@ -134,24 +138,25 @@ The renderer requires Python 3.11+ (`tomllib`), no third-party deps. Frontmatter
 
 Sub-agent role files in `commons/agents/<name>.md` declare a list of **capabilities** (`file_read`, `file_write`, `file_edit`, `shell`, `glob`, `grep`, `web_search`, `web_fetch`). The renderer translates these per-host:
 
-| Capability | Claude | Pi | Codex |
-|---|---|---|---|
-| `file_read` | `Read` | `read` | `shell_command` (cat / head) |
-| `file_write` | `Write` | `write` | `apply_patch` |
-| `file_edit` | `Edit` | `edit` | `apply_patch` |
-| `shell` | `Bash` | `bash` | `shell_command` |
-| `glob` | `Glob` | `ls, find` | `shell_command` (find / ls) |
-| `grep` | `Grep` | `grep` | `shell_command` (grep / rg) |
-| `web_search` | `WebSearch` | `web_search` | `web_search` |
-| `web_fetch` | `WebFetch` | `fetch_content` | `shell_command` (curl) |
+| Capability | Claude | Pi | Codex | Hermes |
+|---|---|---|---|---|
+| `file_read` | `Read` | `read` | `shell_command` (cat / head) | `file` |
+| `file_write` | `Write` | `write` | `apply_patch` | `file` |
+| `file_edit` | `Edit` | `edit` | `apply_patch` | `file` |
+| `shell` | `Bash` | `bash` | `shell_command` | `terminal` |
+| `glob` | `Glob` | `ls, find` | `shell_command` (find / ls) | `file` |
+| `grep` | `Grep` | `grep` | `shell_command` (grep / rg) | `file` |
+| `web_search` | `WebSearch` | `web_search` | `web_search` | `web` |
+| `web_fetch` | `WebFetch` | `fetch_content` | `shell_command` (curl) | `web` |
 
-Duplicate-after-mapping tools are deduped (Codex collapses several capabilities onto `apply_patch` and `shell_command`). Codex sub-agent roles don't carry a per-role tools allowlist — permissions are sandbox-scoped at the workspace level — so the `tools_map` for Codex is informational, kept in `host.toml` to document which capability lands on which tool.
+Duplicate-after-mapping tools are deduped (Codex collapses several capabilities onto `apply_patch` and `shell_command`; Hermes collapses file operations onto the `file` toolset). Codex sub-agent roles don't carry a per-role tools allowlist — permissions are sandbox-scoped at the workspace level — so the `tools_map` for Codex is informational, kept in `host.toml` to document which capability lands on which tool. Hermes role files likewise use the rendered `tools:` field as documentation; the main agent chooses `delegate_task(..., toolsets=[...])` at dispatch time.
 
 ### Frontmatter shaping
 
 Each host emits frontmatter in its own order and adds its own extras:
 
 - **Claude**: `name`, `description`, `tools`. No `output:` (Claude has no native concept). No agent extras.
+- **Hermes**: `name`, `description`, `tools` (informational toolset names). No `output:`; dispatch uses `delegate_task` with explicit context and `toolsets`.
 - **Pi**: `name`, `description`, `thinking`, `tools`, `output`. `thinking: high` is appended via `agent_extra_fields`. `output:` is the per-artefact path pattern; agents without a fixed output (e.g. reviewer) omit it.
 - **Codex**: not YAML — the entire role is a TOML file with `name`, `description`, and a `developer_instructions = """…"""` multi-line string. Roles are registered in `.codex/config.toml` under `[agent_roles.<name>]`.
 
@@ -230,7 +235,7 @@ The body is the **main-agent workflow** for that slash command. It tells the mai
 
 The skill body is rendered into either:
 
-- **Claude / Codex** — a single `SKILL.md` under `.claude/skills/<name>/SKILL.md` or `.agents/skills/<name>/SKILL.md`. Claude uses `argument-hint:` (hyphenated, singular).
+- **Claude / Codex / Hermes** — a single `SKILL.md` under `.claude/skills/<name>/SKILL.md`, `.agents/skills/<name>/SKILL.md`, or `.hermes/skills/<name>/SKILL.md`. Claude uses `argument-hint:` (singular, hyphenated).
 - **Pi** — split into two files: a thin stub at `skills/<name>/SKILL.md` (generated from `hosts/pi/skill_stub.md.tmpl`) plus the full workflow at `prompts/<name>.md`, with the Pi preamble prepended.
 
 ### Main-agent-only skills
@@ -262,7 +267,7 @@ Optional:
 
 ### Companion files
 
-- **`preamble.md`** — injected at the top of skill prompts (Pi, Codex). Carries host-specific tool discipline (e.g. "use `apply_patch` for any file write; `shell_command` for everything else"). Substituted into the `{{preamble}}` placeholder in the workspace doc.
+- **`preamble.md`** — injected at the top of skill prompts (Pi, Codex, Hermes). Carries host-specific tool discipline (e.g. "use `apply_patch` for any file write; `shell_command` for everything else"). Substituted into the `{{preamble}}` placeholder in the workspace doc.
 - **`dispatch_example.md`** — the canonical dispatch syntax for the host. Substituted into the `{{dispatch_example}}` placeholder in the workspace doc and referenced from every skill workflow.
 - **`gitignore.extra`** — appended to the workspace `.gitignore`. Pi adds `node_modules/`.
 - **`skill_stub.md.tmpl`** (Pi only) — template for the thin `skills/<name>/SKILL.md` stubs. Uses placeholders `{{title}}`, `{{name}}`, `{{agents_used_line}}`, `{{output_block}}`.
@@ -273,13 +278,14 @@ Optional:
 - **Claude** — single-file skill layout, YAML+markdown agents. Dispatch via the `Task` tool with `subagent_type=<agent name>`. Settings file at `.claude/settings.json`.
 - **Pi** — two-file skill layout (stub + prompt), YAML+markdown agents. Dispatch via Pi's `subagent` tool (JSON payload). Workspace launch: `pi install -l .` (registers the project as a local Pi package and installs `pi-subagents` + `pi-web-access` from `.pi/settings.json`), then `pi`.
 - **Codex CLI** — single-file skill layout (like Claude), but agents are **TOML files** registered as `[agent_roles.<name>]` blocks in `.codex/config.toml`. Dispatch via `spawn_agent` + `wait_agent` (Codex's `multi_agents_v2` namespace, under active OpenAI development). Workspace launch: `codex`, then accept the project-trust prompt on first run so `config.toml` is honoured.
+- **Hermes Agent** — single-file skill layout rendered under `.hermes/skills`, YAML+markdown role prompts under `.hermes/agents`, and project context in `AGENTS.md` when an explicit Hermes workspace target is rendered. Normal Hermes setup is install-only: `./init-physics-intern.sh host=hermes` renders to a temporary directory, copies the nine PhysicsIntern skills into the active Hermes home (`~/.hermes/skills/` by default, or `$HERMES_HOME/skills` when set), and does not create a workspace in the current directory. Dispatch via `delegate_task`; the main agent passes the role file path, task context, and appropriate `toolsets`, then verifies the written artefact before integration. Restart any already-running Hermes session after installation, then run `hermes` from the directory where you want to work.
 
 
 ## The workspace doc and research log
 
 ### `commons/workspace-doc.md`
 
-This is the main-agent prompt that becomes `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex) in every workspace. It encodes the entire operational discipline: the integration loop, the workspace layout, the file ownership matrix, the `research_log.md` invariants, the dispatch model, the fresh-context rule for review and critique, the checks-and-balances rule.
+This is the main-agent prompt that becomes `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, and explicit Hermes workspace renders). It encodes the entire operational discipline: the integration loop, the workspace layout, the file ownership matrix, the `research_log.md` invariants, the dispatch model, the fresh-context rule for review and critique, the checks-and-balances rule.
 
 Edit this file when the operational discipline changes — what files the main agent edits, how it integrates returns, how it handles flags, how it commits.
 
@@ -294,14 +300,17 @@ The invariants enforced on `research_log.md` (citation discipline, robust eviden
 
 `init-physics-intern.sh` is a thin shell wrapper around `commons/render.py`. It:
 
-1. Parses `--host` (defaults to `claude`) and the target directory (defaults to `.`).
-2. Detects an existing PhysicsIntern workspace in the target (by probing for `.claude/` + `CLAUDE.md`, `.codex/` + `AGENTS.md`, or `.pi/` + `AGENTS.md` containing the marker `PhysicsIntern workspace`). If found, prompts for a reset (everything except `problem.md` is wiped).
-3. Calls `python3 commons/render.py --host=<host> --target=<abs-path>`.
-4. Scaffolds `problem.md` if missing (setup + main question headings).
-5. Creates the artefact directories with `.gitkeep` (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`).
-6. Seeds `notes/flags.md` with the flag-disposition format docstring.
-7. Runs `git init` if needed, stages everything, and makes the bootstrap commit.
-8. Prints a host-specific launch hint.
+1. Parses `--host` (defaults to `claude`; `host=<name>` is accepted as a shorthand) and the target directory (defaults to `.`).
+2. If invoked as `./init-physics-intern.sh host=hermes` (or `--host=hermes`) with no target, renders Hermes files into a temporary directory, copies the PhysicsIntern skills into the active Hermes home (`~/.hermes/skills/` by default, or `$HERMES_HOME/skills` when set), removes the temporary render, and exits without creating a workspace.
+3. Refuses no-target initialization from the PhysicsIntern methodology source checkout for non-Hermes workspace bootstraps, which prevents accidentally resetting the repository itself when the user meant to pass a target workspace directory.
+4. Detects an existing PhysicsIntern workspace in the target (by probing for `.claude/` + `CLAUDE.md`, `.codex/` + `AGENTS.md`, `.hermes/` + `AGENTS.md`, or `.pi/` + `AGENTS.md` containing the marker `PhysicsIntern workspace`). If found, prompts for a reset (everything except `problem.md` is wiped).
+5. Calls `python3 commons/render.py --host=<host> --target=<abs-path>`.
+6. For Hermes with an explicit target, also copies the rendered PhysicsIntern skills into the active Hermes home so `/survey`, `/derive`, etc. are installed through Hermes' normal skill discovery.
+7. Scaffolds `problem.md` if missing (setup + main question headings).
+8. Creates the artefact directories with `.gitkeep` (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`).
+9. Seeds `notes/flags.md` with the flag-disposition format docstring.
+10. Runs `git init` if needed, stages everything, and makes the bootstrap commit.
+11. Prints a host-specific launch hint.
 
 Reset path: triggered by the existing-workspace prompt. Removes `.git/`, all rendered host files, all artefact directories, and any other top-level entries — `problem.md` is preserved. The bootstrap commit message becomes "Re-initialize PhysicsIntern workspace (reset, problem.md preserved, host: …)".
 
@@ -347,9 +356,9 @@ Three places the main agent normally pauses for the user:
 
 ## Design choices worth remembering
 
-- **The host is a deployment decision, not an architectural one.** The methodology source lives in `commons/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding Codex, OpenCode, or Gemini CLI means writing a `hosts/<host>/host.toml` plus a small `dispatch_example.md`.
+- **The host is a deployment decision, not an architectural one.** The methodology source lives in `commons/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding OpenCode, Gemini CLI, or Goose means writing a `hosts/<host>/host.toml` plus a small `dispatch_example.md`.
 - **Files are durable state; context is ephemeral.** The user may clear the session at any time. After a clear, the main agent must resume from `research_log.md` and `plan.md` alone. This is what allows the integration loop to be the only handoff mechanism.
-- **Explicit dispatch, no auto-fork.** Both hosts use the same dispatch model: main agent reads the skill workflow, writes the brief, calls the dispatch tool (`Task` for Claude, `subagent` for Pi, `spawn_agent` for Codex), integrates the return. Claude Code's `context: fork` auto-fork shortcut is not used — the symmetry is more valuable than the keystroke saved.
+- **Explicit dispatch, no auto-fork.** All hosts use the same dispatch model: main agent reads the skill workflow, writes the brief, calls the host dispatch mechanism (`Task` for Claude, `subagent` for Pi, `spawn_agent` for Codex, `delegate_task` for Hermes), integrates the return. Claude Code's `context: fork` auto-fork shortcut is not used — the symmetry is more valuable than the keystroke saved.
 - **Fresh context for `/review` and `/critique` is non-negotiable.** Reviewers don't see prior reviews on the same target. Critics get only one-line summaries of prior critiques. Sub-agents don't see the main agent's reasoning.
 - **No single sub-agent verdict moves research forward.** Before acting on a refutation or a strategy-changing critique finding, the main agent seeks a second opinion. A verdict is a *proposal*, not an order.
 - **Robust evidence before promotion.** A Working Claim becomes Established only with evidence robust against typical failure modes — usually ≥2 independent dispatch contexts. A single artefact's internal symbolic + numerical cross-check counts as one source for conceptual-bug protection.
@@ -366,7 +375,7 @@ Adding a host (OpenCode, Gemini CLI, Goose, …) is a folder under `hosts/`:
 3. **`preamble.md`** (optional) — host-specific tool discipline. Injected at the top of skill prompts and into the workspace doc via `{{preamble}}`.
 4. **`gitignore.extra`** (optional) — appended to the workspace `.gitignore`.
 5. **`extras/<rel-path>`** (optional) — settings files, package manifests, etc., copied verbatim into every rendered workspace.
-6. **Update `init-physics-intern.sh`** — add the new host to the `case "$HOST" in claude|pi|codex)` check, the existing-workspace detection block, and the launch-hint switch at the bottom.
+6. **Update `init-physics-intern.sh`** — add the new host to the `case "$HOST" in claude|pi|codex|hermes)` check, the existing-workspace detection block, and the launch-hint switch at the bottom.
 7. **Update `commons/render.py`** — add the new host to the `--host` choices argument and any host-specific branches in `render_skill` / agent emit paths if the host needs a layout the current paths don't cover.
 
 For hosts that use a non-YAML-frontmatter role format (like Codex's TOML roles), set `agent_format = "toml"` (or add a new value and a new emit path in `render.py`).
@@ -386,6 +395,7 @@ Render before committing:
 bash init-physics-intern.sh --host=claude /tmp/test-claude
 bash init-physics-intern.sh --host=pi     /tmp/test-pi
 bash init-physics-intern.sh --host=codex  /tmp/test-codex
+bash init-physics-intern.sh --host=hermes /tmp/test-hermes
 ```
 
 
