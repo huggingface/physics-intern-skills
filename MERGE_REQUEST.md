@@ -1,29 +1,47 @@
-# feat: add Hermes Agent host
+# feat: add Hermes Agent host support
 
 ## Summary
 
-- Add Hermes Agent as a supported PhysicsIntern host alongside Claude Code, Pi, and OpenAI Codex CLI.
-- Render Hermes workspaces with `AGENTS.md`, `.hermes/agents/*.md`, and `.hermes/skills/*/SKILL.md`.
-- Add Hermes-specific host glue under `hosts/hermes/`:
+Adds Hermes Agent as a supported PhysicsIntern host alongside Claude Code, Pi, and OpenAI Codex CLI.
+
+This PR adds the host-specific glue needed to render and run PhysicsIntern workspaces with Hermes Agent, including workspace context, role prompts, workflow skills, dispatch instructions, init-script support, and documentation.
+
+## Changes
+
+- Add new Hermes host configuration under `hosts/hermes/`
   - `host.toml`
   - `preamble.md`
   - `dispatch_example.md`
-- Update `commons/render.py` so `--host=hermes` is accepted and Hermes uses the single-file `SKILL.md` skill layout.
-- Update `init-physics-intern.sh` to validate, detect, reset, render, and print launch instructions for Hermes workspaces.
-- Update README/developer documentation to describe Hermes setup, skill installation, dispatch behavior, and host architecture.
+- Render Hermes workspaces with:
+  - `AGENTS.md` as the project context file
+  - `.hermes/agents/*.md` for role prompts
+  - `.hermes/skills/*/SKILL.md` for workflow skills
+- Add `--host=hermes` support to `commons/render.py`
+- Update `init-physics-intern.sh` to:
+  - accept `--host=hermes`
+  - detect existing Hermes workspaces
+  - include Hermes reset warnings
+  - print Hermes-specific launch/setup instructions
+- Update user documentation in `README.md`
+- Update developer documentation in `DOCUMENTATION.md`
+- Update repo context in `CLAUDE.md`
 
-## Hermes conventions added
+## Hermes behavior
 
-- Workspace context file: `AGENTS.md`
-- Workspace-local skills: `.hermes/skills/<skill>/SKILL.md`
-- Role prompts: `.hermes/agents/<role>.md`
-- Sub-agent dispatch: Hermes `delegate_task`
-- Toolset mapping:
-  - file read/write/edit/glob/grep capabilities -> `file`
-  - shell capability -> `terminal`
-  - web search/fetch capabilities -> `web`
+Hermes uses:
 
-## User-facing setup
+- `AGENTS.md` for workspace/project context
+- `.hermes/skills/<skill>/SKILL.md` for workspace-local PhysicsIntern skills
+- `.hermes/agents/<role>.md` for sub-agent role prompts
+- `delegate_task` for sub-agent dispatch
+
+Tool capabilities are mapped to Hermes toolsets as follows:
+
+- file read/write/edit/glob/grep -> `file`
+- shell -> `terminal`
+- web search/fetch -> `web`
+
+## Usage
 
 Create a Hermes workspace:
 
@@ -32,28 +50,28 @@ bash init-physics-intern.sh --host=hermes /path/to/workspace
 cd /path/to/workspace
 ```
 
-Make the workspace-local PhysicsIntern skills visible to Hermes:
+Make the workspace-local skills visible to Hermes:
 
 ```bash
 hermes config set skills.external_dirs '["/path/to/workspace/.hermes/skills"]'
 ```
 
-If `skills.external_dirs` already has entries, merge `/path/to/workspace/.hermes/skills` into the existing list instead of overwriting it.
+If `skills.external_dirs` already contains other entries, merge this path into the existing list instead of overwriting it.
 
-Then start a fresh Hermes session in the workspace:
+Then launch Hermes from the workspace:
 
 ```bash
 hermes
 ```
 
-And begin the workflow:
+Start the workflow:
 
 ```text
 /start-research
 /survey
 ```
 
-## Validation performed
+## Validation
 
 Rendered all supported hosts successfully:
 
@@ -64,19 +82,19 @@ for host in claude pi codex hermes; do
 done
 ```
 
-Observed successful renders for:
+Successful renders were verified for:
 
 - `claude`
 - `pi`
 - `codex`
 - `hermes`
 
-Hermes render produced the expected files, including:
+The Hermes render produced the expected workspace files, including:
 
-- `/tmp/test-physicsintern-hermes/AGENTS.md`
-- `/tmp/test-physicsintern-hermes/.hermes/agents/*.md`
-- `/tmp/test-physicsintern-hermes/.hermes/skills/*/SKILL.md`
-- `/tmp/test-physicsintern-hermes/research_log.md`
+- `AGENTS.md`
+- `.hermes/agents/*.md`
+- `.hermes/skills/*/SKILL.md`
+- `research_log.md`
 
 Also ran:
 
@@ -84,30 +102,4 @@ Also ran:
 git diff --check
 ```
 
-No whitespace errors were reported before committing.
-
-## Commit and branch
-
-Branch:
-
-```text
-add-hermes-host
-```
-
-Commit:
-
-```text
-a76cd7e feat: add Hermes Agent host
-```
-
-Remote repository:
-
-```text
-git@github.com:gabrieldlm/physics-intern-skills.git
-```
-
-Pull request URL:
-
-```text
-https://github.com/gabrieldlm/physics-intern-skills/pull/new/add-hermes-host
-```
+No whitespace errors were reported.
