@@ -1,0 +1,37 @@
+# Hermes Agent host configuration.
+#
+# Hermes loads AGENTS.md as project context and discovers slash-command skills
+# from configured skills directories. The rendered workspace stores its
+# PhysicsIntern skills under .hermes/skills; users add that directory to
+# skills.external_dirs (or install/copy the skills) before launching Hermes.
+
+name = "hermes"
+workspace_doc = "AGENTS.md"
+agents_dir = ".hermes/agents"
+agent_ext = ".md"
+skills_dir = ".hermes/skills"
+
+# Hermes sub-agents are spawned with the delegate_task tool. Role files are
+# rendered as readable markdown prompts; the main agent passes the role path and
+# task-specific context when dispatching.
+agent_body_prefix = "# {{name_cap}}\n\n"
+
+# The frontmatter is informational for humans and for future tooling; Hermes
+# does not currently consume per-role tool allowlists from these files.
+agent_frontmatter_order = ["name", "description", "tools"]
+
+[tools_map]
+file_read = "file"
+file_write = "file"
+file_edit = "file"
+shell = "terminal"
+glob = "file"
+grep = "file"
+web_search = "web"
+web_fetch = "web"
+
+[agent_extra_fields]
+
+[file_backed]
+preamble = "preamble.md"
+dispatch_example = "dispatch_example.md"

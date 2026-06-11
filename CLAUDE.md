@@ -1,6 +1,6 @@
 # PhysicsIntern project
 
-In this repo we develop and maintain the core methodology and skills for PhysicsIntern, a framework for using AI agents to conduct physics research.
+In this repo we develop and maintain the core methodology and skills for PhysicsIntern, a framework for using AI agents to conduct physics research. It currently supports Claude Code, OpenAI Codex CLI, Pi, and Hermes Agent hosts.
 
 - **For user-facing context** (what PhysicsIntern is, install/launch, hosts, slash-command reference, what a workspace looks like at runtime): see [`README.md`](README.md).
 - **For developer documentation** (repo layout, render pipeline, agent/skill authoring contracts, host glue, design choices, how to add a new host/agent/skill, the audit workflow): see [`DOCUMENTATION.md`](DOCUMENTATION.md).

@@ -3,7 +3,7 @@
 # init-physics-intern.sh — bootstrap a PhysicsIntern research workspace.
 #
 # Usage:
-#   init-physics-intern.sh [--host=claude|pi] [target-dir]
+#   init-physics-intern.sh [--host=claude|pi|codex|hermes] [target-dir]
 #
 # If target-dir is omitted, the current directory is used. The target dir is
 # created if missing. The script renders workspace files from commons/ (shared
@@ -18,7 +18,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Parse CLI args: --host selects the agent host (claude or pi), positional arg
+# Parse CLI args: --host selects the agent host (claude, pi, codex, or hermes), positional arg
 # is the target directory (defaults to current dir).
 HOST="claude"
 TARGET_DIR="."
@@ -37,11 +37,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# Validate host selection — claude, pi, codex are supported.
+# Validate host selection — claude, pi, codex, and hermes are supported.
 case "$HOST" in
-  claude|pi|codex) ;;
+  claude|pi|codex|hermes) ;;
   *)
-    echo "Error: --host must be 'claude', 'pi', or 'codex' (got '$HOST')" >&2
+    echo "Error: --host must be 'claude', 'pi', 'codex', or 'hermes' (got '$HOST')" >&2
     exit 1 ;;
 esac
 
@@ -56,9 +56,9 @@ mkdir -p "$TARGET_DIR"
 cd "$TARGET_DIR"
 TARGET_ABS="$(pwd)"
 
-# Detect an existing PhysicsIntern workspace (any host) and offer reset. Pi
-# and Codex both use AGENTS.md as the workspace doc, so we disambiguate by
-# probing the host-specific directory (.pi/ vs .codex/) in addition to the
+# Detect an existing PhysicsIntern workspace (any host) and offer reset. Pi,
+# Codex, and Hermes use AGENTS.md as the workspace doc, so we disambiguate by
+# probing the host-specific directory (.pi/, .codex/, or .hermes/) in addition to the
 # "PhysicsIntern workspace" marker in the workspace doc.
 RESET=0
 EXISTING_HOST=""
@@ -66,6 +66,8 @@ if [[ -d .claude ]] && [[ -f CLAUDE.md ]] && grep -q "PhysicsIntern workspace" C
   EXISTING_HOST="claude"
 elif [[ -d .codex ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
   EXISTING_HOST="codex"
+elif [[ -d .hermes ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
+  EXISTING_HOST="hermes"
 elif [[ -d .pi ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
   EXISTING_HOST="pi"
 fi
@@ -78,10 +80,10 @@ if [[ -n "$EXISTING_HOST" ]]; then
   echo "Reset will REMOVE every file and directory here EXCEPT problem.md,"
   echo "then re-initialize from templates (host: $HOST). This discards:"
   echo "  - .git/ (all commit history, including uncommitted work)"
-  echo "  - .claude/, .pi/, or .codex/, .gitignore, CLAUDE.md or AGENTS.md, research_log.md"
+  echo "  - .claude/, .pi/, .codex/, or .hermes/, .gitignore, CLAUDE.md or AGENTS.md, research_log.md"
   echo "  - plan.md, survey.md, answer.md (if present)"
   echo "  - derivations/, computations/, critiques/, notes/, references/, data/"
-  echo "  - skills/, prompts/, package.json (if pi); .agents/skills/ (if codex)"
+  echo "  - skills/, prompts/, package.json (if pi); .agents/skills/ (if codex); .hermes/skills/ (if hermes)"
   echo "  - anything else in this directory"
   echo
   printf "Reset? [y/N] "
@@ -176,6 +178,14 @@ case "$HOST" in
        codex                       # first run will prompt to trust the project — accept it,
                                    # otherwise .codex/config.toml (incl. agent_roles) is ignored
        Sub-agent dispatch uses spawn_agent + wait_agent (multi_agents_v2)."
+    HEADER_FILES="AGENTS.md and research_log.md"
+    ;;
+  hermes)
+    LAUNCH_HINT="Make this workspace's skills visible to Hermes, then launch Hermes here:
+       hermes config set skills.external_dirs '[\"$TARGET_ABS/.hermes/skills\"]'
+       hermes                       # restart Hermes after changing skills.external_dirs
+       Sub-agent dispatch uses delegate_task. If you already use skills.external_dirs,
+       merge $TARGET_ABS/.hermes/skills into the existing list instead of overwriting it."
     HEADER_FILES="AGENTS.md and research_log.md"
     ;;
 esac
