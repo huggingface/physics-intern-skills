@@ -2,6 +2,10 @@
 
 Methodology patterns observed in workspace runs that are worth promoting into the templates. Each entry: what it is, why it helps, where it should live.
 
+## A LaTeX formatter agent
+
+.md files can be hard to parse for LaTeX.
+
 ## Two-role critique pattern
 
 **Idea.** `/critique` has two distinct uses, and a good run does both:

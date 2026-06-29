@@ -1,0 +1,55 @@
+# OpenCode host configuration.
+#
+# The renderer reads this file to know how to map capabilities to tool names,
+# where to write rendered files, and how to shape host-specific frontmatter.
+#
+# OpenCode is the closest host to Claude Code: agents are YAML-frontmatter
+# markdown (same emit path as Claude/Pi), sub-agent dispatch is the native
+# `Task` tool with `subagent_type` (identical signature to Claude), and the
+# tool surface uses Claude-like names (read/write/edit/bash/glob/grep/
+# webfetch/websearch) — so no preamble / tool-name translation is needed.
+#
+# Two structural differences from Claude:
+#   - the workspace doc is AGENTS.md (read natively by OpenCode), and
+#   - "commands" (our skills) live FLAT under .opencode/commands/<name>.md
+#     rather than nested under <name>/SKILL.md (skills_layout = "flat").
+# Agents and commands are auto-discovered — no registration step (unlike Codex).
+
+name = "opencode"
+workspace_doc = "AGENTS.md"
+agents_dir = ".opencode/agents"
+agent_ext = ".md"
+skills_dir = ".opencode/commands"
+
+# Flat single-file commands: <skills_dir>/<name>.md (no per-skill subfolder).
+skills_layout = "flat"
+
+# OpenCode markdown agents derive their name from the filename, so we omit a
+# `name:` field. Per-agent tool gating is intentionally not emitted (Codex-style)
+# — file ownership is enforced by the AGENTS.md prose and the agent prompts.
+# `mode: subagent` marks each role as a sub-agent invokable via the Task tool.
+agent_frontmatter_order = ["description", "mode"]
+
+[agent_extra_fields]
+mode = "subagent"
+
+# tools_map is declared for symmetry and documentation only: it is never emitted
+# because `tools` is not in agent_frontmatter_order. It must still be COMPLETE so
+# render_tools() (called unconditionally) does not raise on a capability. Keys
+# mirror OpenCode's native tool names.
+[tools_map]
+file_read = "read"
+file_write = "write"
+file_edit = "edit"
+shell = "bash"
+glob = "glob"
+grep = "grep"
+web_search = "websearch"
+web_fetch = "webfetch"
+
+# File-backed values: each is loaded from hosts/<host>/<filename> at render
+# time. Missing files yield an empty string — OpenCode has no preamble.md
+# (native tool names match the generic references in the methodology).
+[file_backed]
+preamble = "preamble.md"
+dispatch_example = "dispatch_example.md"

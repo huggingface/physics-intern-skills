@@ -1,8 +1,8 @@
 # PhysicsIntern
 
-A methodology package for using AI coding agents (Claude Code, Pi, OpenAI Codex CLI) to conduct theoretical physics and mathematics research. Drop a research question into `problem.md`, run a single bootstrap command, launch your agent, and run `/survey` to begin. The agent handles the rest — surveying the literature, drafting a plan, dispatching analytical derivations and numerical computations to fresh-context sub-agents, reviewing each result, and synthesising the final answer into `answer.md`.
+A methodology package for using AI coding agents (Claude Code, Pi, OpenAI Codex CLI, OpenCode) to conduct theoretical physics and mathematics research. Drop a research question into `problem.md`, run a single bootstrap command, launch your agent, and run `/survey` to begin. The agent handles the rest — surveying the literature, drafting a plan, dispatching analytical derivations and numerical computations to fresh-context sub-agents, reviewing each result, and synthesising the final answer into `answer.md`.
 
-PhysicsIntern is **host-agnostic**: the same methodology runs on three coding-agent hosts, with the host chosen at workspace-creation time. Files are durable state, the session is ephemeral — you can clear the context at any time and the agent picks up from `research_log.md` and `plan.md`.
+PhysicsIntern is **host-agnostic**: the same methodology runs on four coding-agent hosts, with the host chosen at workspace-creation time. Files are durable state, the session is ephemeral — you can clear the context at any time and the agent picks up from `research_log.md` and `plan.md`.
 
 > **Working on the methodology itself?** See [DOCUMENTATION.md](DOCUMENTATION.md) for the developer documentation: render pipeline, agent/skill authoring contracts, host glue, and the audit workflow.
 
@@ -14,6 +14,7 @@ PhysicsIntern is **host-agnostic**: the same methodology runs on three coding-ag
   - **[Claude Code](https://claude.com/claude-code)** (default) — `claude` on your PATH.
   - **[Pi](https://pi.dev)** — `pi` on your PATH.
   - **[OpenAI Codex CLI](https://github.com/openai/codex)** — `codex` on your PATH.
+  - **[OpenCode](https://opencode.ai)** — `opencode` on your PATH.
 
 The agent host provides web search, Python execution, and sub-agent dispatch. PhysicsIntern does not need any API keys of its own.
 
@@ -76,12 +77,24 @@ codex                                           # on first run, accept the "trus
 
 Sub-agent dispatch on Codex uses `spawn_agent` + `wait_agent` from the `multi_agents_v2` namespace, which is under active OpenAI development.
 
+### OpenCode
+
+```bash
+./init-physics-intern.sh --host=opencode ../my-workspace
+cd ../my-workspace
+opencode                                        # commands and sub-agents auto-discovered from .opencode/
+> /start-research
+> /survey
+```
+
+Sub-agent dispatch on OpenCode uses the native `Task` tool with `subagent_type` (the same shape as Claude Code). Commands (`.opencode/commands/`) and agents (`.opencode/agents/`) are auto-discovered — no registration step.
+
 
 ## What `init-physics-intern.sh` does
 
 The bootstrap script renders a workspace from this repo's templates:
 
-- Creates `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex) — the main-agent prompt encoding the entire research methodology.
+- Creates `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, OpenCode) — the main-agent prompt encoding the entire research methodology.
 - Renders the seven sub-agent role prompts and nine workflow skills into the host's expected layout.
 - Scaffolds `problem.md` with empty `### Problem setup` and `### Main question` blocks if you haven't written one.
 - Creates artefact directories (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`).
@@ -159,5 +172,5 @@ If you want to inspect what the agent has been doing, `git log` is authoritative
 ## Limitations and next steps
 
 - **No MCP integrations ship today.** `/compute` uses SymPy + NumPy; `/survey` uses the host's built-in web search. Planned but not implemented: `mcp-arxiv`, `mcp-papers` (index `references/`), `mcp-mathematica` (symbolic backend for licence-holders), tensor-algebra backends.
-- **Three hosts supported.** Claude Code, Pi, OpenAI Codex CLI. OpenCode, Gemini CLI, Goose are not implemented yet — adding one is a folder under `hosts/`; see [DOCUMENTATION.md](DOCUMENTATION.md#adding-a-new-host).
+- **Four hosts supported.** Claude Code, Pi, OpenAI Codex CLI, OpenCode. Gemini CLI, Goose are not implemented yet — adding one is a folder under `hosts/`; see [DOCUMENTATION.md](DOCUMENTATION.md#adding-a-new-host).
 - **No workspace upgrade path.** Changes to the methodology propagate to **new** workspaces on the next `init-physics-intern.sh` run. Existing workspaces keep whatever version they were created with, unless you re-run the bootstrap with reset (which preserves `problem.md` only).

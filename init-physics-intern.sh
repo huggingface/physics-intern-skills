@@ -37,11 +37,11 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-# Validate host selection — claude, pi, codex are supported.
+# Validate host selection — claude, pi, codex, opencode are supported.
 case "$HOST" in
-  claude|pi|codex) ;;
+  claude|pi|codex|opencode) ;;
   *)
-    echo "Error: --host must be 'claude', 'pi', or 'codex' (got '$HOST')" >&2
+    echo "Error: --host must be 'claude', 'pi', 'codex', or 'opencode' (got '$HOST')" >&2
     exit 1 ;;
 esac
 
@@ -56,10 +56,10 @@ mkdir -p "$TARGET_DIR"
 cd "$TARGET_DIR"
 TARGET_ABS="$(pwd)"
 
-# Detect an existing PhysicsIntern workspace (any host) and offer reset. Pi
-# and Codex both use AGENTS.md as the workspace doc, so we disambiguate by
-# probing the host-specific directory (.pi/ vs .codex/) in addition to the
-# "PhysicsIntern workspace" marker in the workspace doc.
+# Detect an existing PhysicsIntern workspace (any host) and offer reset. Pi,
+# Codex and OpenCode all use AGENTS.md as the workspace doc, so we disambiguate
+# by probing the host-specific directory (.pi/ vs .codex/ vs .opencode/) in
+# addition to the "PhysicsIntern workspace" marker in the workspace doc.
 RESET=0
 EXISTING_HOST=""
 if [[ -d .claude ]] && [[ -f CLAUDE.md ]] && grep -q "PhysicsIntern workspace" CLAUDE.md; then
@@ -68,6 +68,8 @@ elif [[ -d .codex ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" 
   EXISTING_HOST="codex"
 elif [[ -d .pi ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
   EXISTING_HOST="pi"
+elif [[ -d .opencode ]] && [[ -f AGENTS.md ]] && grep -q "PhysicsIntern workspace" AGENTS.md; then
+  EXISTING_HOST="opencode"
 fi
 
 # If a prior workspace is detected, prompt the user before wiping it.
@@ -176,6 +178,13 @@ case "$HOST" in
        codex                       # first run will prompt to trust the project — accept it,
                                    # otherwise .codex/config.toml (incl. agent_roles) is ignored
        Sub-agent dispatch uses spawn_agent + wait_agent (multi_agents_v2)."
+    HEADER_FILES="AGENTS.md and research_log.md"
+    ;;
+  opencode)
+    LAUNCH_HINT="Launch OpenCode in this directory:
+       opencode                    # commands (/survey, /derive, …) and sub-agents are
+                                   # auto-discovered from .opencode/ — no registration step
+       Sub-agent dispatch uses the Task tool (subagent_type)."
     HEADER_FILES="AGENTS.md and research_log.md"
     ;;
 esac

@@ -358,16 +358,30 @@ def _emit_yaml(fields: list[tuple[str, object]]) -> str:
 
 
 def _render_skill_claude(meta: dict, body: str, host: dict, target: Path) -> None:
-    """Render a skill into Claude's single-file layout: skills/<name>/SKILL.md."""
-    fields: list[tuple[str, object]] = [
-        ("name", meta["name"]),
-        ("description", meta["description"]),
-    ]
-    args_hint = meta.get("arguments_hint", "")
-    if args_hint:
-        # Claude uses `argument-hint:` (singular, hyphenated)
-        fields.append(("argument-hint", args_hint))
-    out_path = target / host["skills_dir"] / meta["name"] / "SKILL.md"
+    """Render a skill into a single-file layout.
+
+    Two layouts, selected by `skills_layout` in host.toml:
+    - "nested" (default, Claude/Codex): skills/<name>/SKILL.md, with `name:` and
+      Claude's `argument-hint:` in the frontmatter.
+    - "flat" (OpenCode): commands/<name>.md, `description:` only — OpenCode
+      derives the command name from the filename and has no argument-hint field.
+    """
+    flat = host.get("skills_layout", "nested") == "flat"
+
+    fields: list[tuple[str, object]] = []
+    if not flat:
+        fields.append(("name", meta["name"]))
+    fields.append(("description", meta["description"]))
+    if not flat:
+        args_hint = meta.get("arguments_hint", "")
+        if args_hint:
+            # Claude uses `argument-hint:` (singular, hyphenated)
+            fields.append(("argument-hint", args_hint))
+
+    if flat:
+        out_path = target / host["skills_dir"] / f"{meta['name']}.md"
+    else:
+        out_path = target / host["skills_dir"] / meta["name"] / "SKILL.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(f"{_emit_yaml(fields)}\n\n{body.lstrip()}")
 
@@ -407,11 +421,12 @@ def render_skill(src_path: Path, host: dict, target: Path) -> None:
     meta, body = read_frontmatter(src_path)
     body = substitute(body, host)
 
-    if host["name"] in ("claude", "codex"):
-        # Codex skills use the same single-file SKILL.md layout as Claude
-        # (frontmatter `name:` + `description:`, markdown body). The only
-        # difference is the discovery root, controlled by `skills_dir` in
-        # host.toml (.claude/skills/ vs .agents/skills/).
+    if host["name"] in ("claude", "codex", "opencode"):
+        # Codex and OpenCode use the same single-file layout as Claude
+        # (frontmatter + markdown body). The discovery root is controlled by
+        # `skills_dir`, and the per-skill-folder vs flat shape by
+        # `skills_layout` in host.toml (Claude/Codex nest under <name>/SKILL.md;
+        # OpenCode writes flat <name>.md commands).
         _render_skill_claude(meta, body, host, target)
     elif host["name"] == "pi":
         _render_skill_pi(meta, body, host, target)
@@ -474,7 +489,7 @@ def load_host(host_name: str) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", required=True, choices=["claude", "pi", "codex"])
+    parser.add_argument("--host", required=True, choices=["claude", "pi", "codex", "opencode"])
     parser.add_argument("--target", required=True, type=Path)
     args = parser.parse_args()
 

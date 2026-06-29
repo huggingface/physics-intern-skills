@@ -23,7 +23,7 @@ This document is for contributors working on the PhysicsIntern methodology itsel
 
 ## What this repo is (and isn't)
 
-This repo holds the **methodology** — the prompts, the render pipeline, and the workspace template — that turn an AI coding harness (Claude Code, Pi, Codex CLI) into a research collaborator for theoretical physics and mathematics. The host already provides tool-use loops, sub-agent dispatch, sandboxed Python, web search, and slash-command-as-skill; we don't rebuild those. We layer on top: structured survey, explicit plan, fresh-context derivations and adversarial reviews, strategic critique, systematic symbolic + numerical cross-checking, citation discipline.
+This repo holds the **methodology** — the prompts, the render pipeline, and the workspace template — that turn an AI coding harness (Claude Code, Pi, Codex CLI, OpenCode) into a research collaborator for theoretical physics and mathematics. The host already provides tool-use loops, sub-agent dispatch, sandboxed Python, web search, and slash-command-as-skill; we don't rebuild those. We layer on top: structured survey, explicit plan, fresh-context derivations and adversarial reviews, strategic critique, systematic symbolic + numerical cross-checking, citation discipline.
 
 What lives here:
 
@@ -81,11 +81,15 @@ physics-intern/
 │   │   └── extras/
 │   │       ├── package.json
 │   │       └── .pi/settings.json
-│   └── codex/
-│       ├── host.toml                  # agent_format="toml"; tools collapse onto shell_command + apply_patch
-│       ├── preamble.md                # Codex tool discipline
-│       ├── dispatch_example.md        # spawn_agent + wait_agent example
-│       └── extras/.codex/config.toml  # sandbox + web_search; renderer appends [agent_roles.*] blocks
+│   ├── codex/
+│   │   ├── host.toml                  # agent_format="toml"; tools collapse onto shell_command + apply_patch
+│   │   ├── preamble.md                # Codex tool discipline
+│   │   ├── dispatch_example.md        # spawn_agent + wait_agent example
+│   │   └── extras/.codex/config.toml  # sandbox + web_search; renderer appends [agent_roles.*] blocks
+│   └── opencode/
+│       ├── host.toml                  # skills_layout="flat"; mode=subagent; YAML+md agents, native tools
+│       ├── dispatch_example.md        # Task tool (subagent_type) example
+│       └── extras/opencode.json       # project config (permissions); agents/commands auto-discovered
 ├── .claude/skills/
 │   └── investigate-run/               # repo-level audit skill
 ├── workspaces/                        # sample workspaces (methodology test runs and real research)
@@ -117,8 +121,8 @@ It performs, in order:
 
 1. **Load the host config** — `hosts/<host>/host.toml` plus any `file_backed` entries (e.g. `preamble = "preamble.md"`).
 2. **Render agents** — one file per `commons/agents/<name>.md`. The body is substituted (`{{…}}` placeholders), and the manifest fields (`name`, `description`, `capabilities`, `output_pattern`) are projected onto the host's frontmatter or TOML role file. Capabilities are mapped to host-specific tool names via `tools_map`.
-3. **Render skills** — one file (Claude / Codex single-file `SKILL.md`) or two (Pi: stub under `skills/<name>/SKILL.md` + workflow under `prompts/<name>.md`) per `commons/skills/<name>.md`.
-4. **Render the workspace doc** — `commons/workspace-doc.md` → `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex). Placeholders like `{{workspace_doc}}` and `{{dispatch_example}}` are substituted from the host config.
+3. **Render skills** — layout depends on the host: Claude / Codex write a single-file `<skills_dir>/<name>/SKILL.md`; OpenCode writes a single **flat** `<skills_dir>/<name>.md` command (`skills_layout = "flat"`); Pi writes two files (stub under `skills/<name>/SKILL.md` + workflow under `prompts/<name>.md`) per `commons/skills/<name>.md`.
+4. **Render the workspace doc** — `commons/workspace-doc.md` → `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, OpenCode). Placeholders like `{{workspace_doc}}` and `{{dispatch_example}}` are substituted from the host config.
 5. **Render `research_log.md`** — substituted from the same template.
 6. **Render `.gitignore`** — `commons/gitignore` plus optional `hosts/<host>/gitignore.extra`.
 7. **Copy host extras** — every file under `hosts/<host>/extras/` is copied to the workspace, preserving relative paths.
@@ -134,18 +138,18 @@ The renderer requires Python 3.11+ (`tomllib`), no third-party deps. Frontmatter
 
 Sub-agent role files in `commons/agents/<name>.md` declare a list of **capabilities** (`file_read`, `file_write`, `file_edit`, `shell`, `glob`, `grep`, `web_search`, `web_fetch`). The renderer translates these per-host:
 
-| Capability | Claude | Pi | Codex |
-|---|---|---|---|
-| `file_read` | `Read` | `read` | `shell_command` (cat / head) |
-| `file_write` | `Write` | `write` | `apply_patch` |
-| `file_edit` | `Edit` | `edit` | `apply_patch` |
-| `shell` | `Bash` | `bash` | `shell_command` |
-| `glob` | `Glob` | `ls, find` | `shell_command` (find / ls) |
-| `grep` | `Grep` | `grep` | `shell_command` (grep / rg) |
-| `web_search` | `WebSearch` | `web_search` | `web_search` |
-| `web_fetch` | `WebFetch` | `fetch_content` | `shell_command` (curl) |
+| Capability | Claude | Pi | Codex | OpenCode |
+|---|---|---|---|---|
+| `file_read` | `Read` | `read` | `shell_command` (cat / head) | `read` |
+| `file_write` | `Write` | `write` | `apply_patch` | `write` |
+| `file_edit` | `Edit` | `edit` | `apply_patch` | `edit` |
+| `shell` | `Bash` | `bash` | `shell_command` | `bash` |
+| `glob` | `Glob` | `ls, find` | `shell_command` (find / ls) | `glob` |
+| `grep` | `Grep` | `grep` | `shell_command` (grep / rg) | `grep` |
+| `web_search` | `WebSearch` | `web_search` | `web_search` | `websearch` |
+| `web_fetch` | `WebFetch` | `fetch_content` | `shell_command` (curl) | `webfetch` |
 
-Duplicate-after-mapping tools are deduped (Codex collapses several capabilities onto `apply_patch` and `shell_command`). Codex sub-agent roles don't carry a per-role tools allowlist — permissions are sandbox-scoped at the workspace level — so the `tools_map` for Codex is informational, kept in `host.toml` to document which capability lands on which tool.
+Duplicate-after-mapping tools are deduped (Codex collapses several capabilities onto `apply_patch` and `shell_command`). Two hosts don't carry a per-role tools allowlist: **Codex** (permissions are sandbox-scoped at the workspace level) and **OpenCode** (per-agent gating intentionally omitted — file ownership is enforced by the `AGENTS.md` prose and the agent prompts, the same trade-off as Codex). For both, the `tools_map` is informational, kept in `host.toml` to document which capability lands on which tool; the renderer never emits a `tools` field for them because `tools` is absent from their `agent_frontmatter_order`.
 
 ### Frontmatter shaping
 
@@ -154,6 +158,7 @@ Each host emits frontmatter in its own order and adds its own extras:
 - **Claude**: `name`, `description`, `tools`. No `output:` (Claude has no native concept). No agent extras.
 - **Pi**: `name`, `description`, `thinking`, `tools`, `output`. `thinking: high` is appended via `agent_extra_fields`. `output:` is the per-artefact path pattern; agents without a fixed output (e.g. reviewer) omit it.
 - **Codex**: not YAML — the entire role is a TOML file with `name`, `description`, and a `developer_instructions = """…"""` multi-line string. Roles are registered in `.codex/config.toml` under `[agent_roles.<name>]`.
+- **OpenCode**: `description`, `mode`. No `name` (OpenCode derives the agent name from the filename) and no `tools` (per-role gating omitted). `mode: subagent` is appended via `agent_extra_fields` to mark each role as Task-tool-invokable. Agents are auto-discovered from `.opencode/agents/` — no registration step.
 
 
 ## Authoring agents
@@ -231,6 +236,7 @@ The body is the **main-agent workflow** for that slash command. It tells the mai
 The skill body is rendered into either:
 
 - **Claude / Codex** — a single `SKILL.md` under `.claude/skills/<name>/SKILL.md` or `.agents/skills/<name>/SKILL.md`. Claude uses `argument-hint:` (hyphenated, singular).
+- **OpenCode** — a single **flat** command file at `.opencode/commands/<name>.md` (`skills_layout = "flat"`), with `description:` only (the command name comes from the filename; OpenCode has no argument-hint field).
 - **Pi** — split into two files: a thin stub at `skills/<name>/SKILL.md` (generated from `hosts/pi/skill_stub.md.tmpl`) plus the full workflow at `prompts/<name>.md`, with the Pi preamble prepended.
 
 ### Main-agent-only skills
@@ -266,13 +272,14 @@ Optional:
 - **`dispatch_example.md`** — the canonical dispatch syntax for the host. Substituted into the `{{dispatch_example}}` placeholder in the workspace doc and referenced from every skill workflow.
 - **`gitignore.extra`** — appended to the workspace `.gitignore`. Pi adds `node_modules/`.
 - **`skill_stub.md.tmpl`** (Pi only) — template for the thin `skills/<name>/SKILL.md` stubs. Uses placeholders `{{title}}`, `{{name}}`, `{{agents_used_line}}`, `{{output_block}}`.
-- **`extras/<rel-path>`** — copied verbatim into the workspace. Claude ships `.claude/settings.json`; Pi ships `package.json` + `.pi/settings.json`; Codex ships `.codex/config.toml`.
+- **`extras/<rel-path>`** — copied verbatim into the workspace. Claude ships `.claude/settings.json`; Pi ships `package.json` + `.pi/settings.json`; Codex ships `.codex/config.toml`; OpenCode ships `opencode.json`.
 
 ### Host-specific notes
 
 - **Claude** — single-file skill layout, YAML+markdown agents. Dispatch via the `Task` tool with `subagent_type=<agent name>`. Settings file at `.claude/settings.json`.
 - **Pi** — two-file skill layout (stub + prompt), YAML+markdown agents. Dispatch via Pi's `subagent` tool (JSON payload). Workspace launch: `pi install -l .` (registers the project as a local Pi package and installs `pi-subagents` + `pi-web-access` from `.pi/settings.json`), then `pi`.
 - **Codex CLI** — single-file skill layout (like Claude), but agents are **TOML files** registered as `[agent_roles.<name>]` blocks in `.codex/config.toml`. Dispatch via `spawn_agent` + `wait_agent` (Codex's `multi_agents_v2` namespace, under active OpenAI development). Workspace launch: `codex`, then accept the project-trust prompt on first run so `config.toml` is honoured.
+- **OpenCode** — the closest host to Claude Code. YAML+markdown agents under `.opencode/agents/` and **flat single-file commands** under `.opencode/commands/<name>.md` (`skills_layout = "flat"`), both auto-discovered (no registration). Dispatch via the native `Task` tool with `subagent_type` — identical signature to Claude. Native tool names match the methodology's generic references, so there is no `preamble.md`. Project config ships as `extras/opencode.json` (permission defaults). Workspace launch: `opencode`. **Sessions are stored in a single SQLite DB** at `${XDG_DATA_HOME:-~/.local/share}/opencode/opencode.db` (not JSONL) — the `investigate-run` audit skill queries it via `session.directory` + `parent_id`. **Model choice dominates sub-agent reliability**: weak models stall after reading a brief instead of writing the artefact (the main agent re-dispatches and self-heals, but wastes work) — pin a strong model in `opencode.json` or via `opencode --model`.
 
 
 ## The workspace doc and research log
@@ -347,7 +354,7 @@ Three places the main agent normally pauses for the user:
 
 ## Design choices worth remembering
 
-- **The host is a deployment decision, not an architectural one.** The methodology source lives in `commons/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding Codex, OpenCode, or Gemini CLI means writing a `hosts/<host>/host.toml` plus a small `dispatch_example.md`.
+- **The host is a deployment decision, not an architectural one.** The methodology source lives in `commons/`; per-host glue (tool names, frontmatter shapes, dispatch syntax) lives in `hosts/<host>/`. Adding Codex, OpenCode, or Gemini CLI meant (or means) writing a `hosts/<host>/host.toml` plus a small `dispatch_example.md`.
 - **Files are durable state; context is ephemeral.** The user may clear the session at any time. After a clear, the main agent must resume from `research_log.md` and `plan.md` alone. This is what allows the integration loop to be the only handoff mechanism.
 - **Explicit dispatch, no auto-fork.** Both hosts use the same dispatch model: main agent reads the skill workflow, writes the brief, calls the dispatch tool (`Task` for Claude, `subagent` for Pi, `spawn_agent` for Codex), integrates the return. Claude Code's `context: fork` auto-fork shortcut is not used — the symmetry is more valuable than the keystroke saved.
 - **Fresh context for `/review` and `/critique` is non-negotiable.** Reviewers don't see prior reviews on the same target. Critics get only one-line summaries of prior critiques. Sub-agents don't see the main agent's reasoning.
@@ -359,14 +366,14 @@ Three places the main agent normally pauses for the user:
 
 ## Adding a new host
 
-Adding a host (OpenCode, Gemini CLI, Goose, …) is a folder under `hosts/`:
+Adding a host (Gemini CLI, Goose, …) is a folder under `hosts/`:
 
 1. **`host.toml`** — declare `name`, `workspace_doc`, `agents_dir`, `agent_ext`, `skills_dir`, `agent_frontmatter_order`, and `[tools_map]`. Add `[agent_extra_fields]` if the host needs extras. Add `[file_backed]` entries for any companion files you ship.
 2. **`dispatch_example.md`** — the exact syntax the main agent uses to dispatch a sub-agent for `/derive D-007`. This string is substituted into the workspace doc, so be precise.
 3. **`preamble.md`** (optional) — host-specific tool discipline. Injected at the top of skill prompts and into the workspace doc via `{{preamble}}`.
 4. **`gitignore.extra`** (optional) — appended to the workspace `.gitignore`.
 5. **`extras/<rel-path>`** (optional) — settings files, package manifests, etc., copied verbatim into every rendered workspace.
-6. **Update `init-physics-intern.sh`** — add the new host to the `case "$HOST" in claude|pi|codex)` check, the existing-workspace detection block, and the launch-hint switch at the bottom.
+6. **Update `init-physics-intern.sh`** — add the new host to the `case "$HOST" in claude|pi|codex|opencode)` check, the existing-workspace detection block, and the launch-hint switch at the bottom.
 7. **Update `commons/render.py`** — add the new host to the `--host` choices argument and any host-specific branches in `render_skill` / agent emit paths if the host needs a layout the current paths don't cover.
 
 For hosts that use a non-YAML-frontmatter role format (like Codex's TOML roles), set `agent_format = "toml"` (or add a new value and a new emit path in `render.py`).
@@ -376,22 +383,23 @@ Render and inspect a fresh workspace under `/tmp/` before committing the new hos
 
 ## Adding a new agent or skill
 
-**A new agent** is one file: `commons/agents/<name>.md`. Pick a kebab-case name, write the manifest (`name`, `description`, `capabilities`, `output_pattern`), write the role body following the contract in [Authoring agents](#authoring-agents). Render against every supported host (`claude`, `pi`, `codex`) and confirm the rendered frontmatter is well-formed.
+**A new agent** is one file: `commons/agents/<name>.md`. Pick a kebab-case name, write the manifest (`name`, `description`, `capabilities`, `output_pattern`), write the role body following the contract in [Authoring agents](#authoring-agents). Render against every supported host (`claude`, `pi`, `codex`, `opencode`) and confirm the rendered frontmatter is well-formed.
 
 **A new skill** is one file: `commons/skills/<name>.md`. Pick a kebab-case name, write the manifest, write the main-agent workflow body following the structure in [Authoring skills](#authoring-skills). If the skill dispatches a sub-agent, that agent must already exist in `commons/agents/`. Add the skill to the table in [README.md](README.md) and the listing in `commons/workspace-doc.md` §4.
 
 Render before committing:
 
 ```bash
-bash init-physics-intern.sh --host=claude /tmp/test-claude
-bash init-physics-intern.sh --host=pi     /tmp/test-pi
-bash init-physics-intern.sh --host=codex  /tmp/test-codex
+bash init-physics-intern.sh --host=claude   /tmp/test-claude
+bash init-physics-intern.sh --host=pi       /tmp/test-pi
+bash init-physics-intern.sh --host=codex    /tmp/test-codex
+bash init-physics-intern.sh --host=opencode /tmp/test-opencode
 ```
 
 
 ## Auditing a run: `investigate-run`
 
-`.claude/skills/investigate-run/SKILL.md` is a **repo-level** audit skill — not part of any workspace template; used while iterating on the methodology in this repo. Given a workspace path and a Claude Code session JSONL (or equivalent), it produces a post-mortem report covering:
+`.claude/skills/investigate-run/SKILL.md` is a **repo-level** audit skill — not part of any workspace template; used while iterating on the methodology in this repo. Given a workspace path and its session record — a JSONL for Claude/Pi/Codex, or the SQLite store (`opencode.db`, queried by `session.directory` + `parent_id`) for OpenCode — it produces a post-mortem report covering:
 
 - **Trajectory reconstruction** — skills dispatched, returns, integration actions.
 - **Methodology adherence** — against the rules baked into the workspace's `CLAUDE.md` / `AGENTS.md` and agent prompts.
@@ -416,4 +424,4 @@ Iteration loop when changing prompts:
 5. **Compare** — diff findings against prior runs in `results/`. Look for recurring failure modes; those are signal that a prompt needs editing.
 6. **Commit** — source change + (if relevant) `investigate-run` rule change, in one commit.
 
-Changes propagate to **new** workspaces on the next `init-physics-intern.sh` run. Existing workspaces carry the methodology baked into their `.claude/`, `.pi/`, or `.codex/` at the time they were created — there is no upgrade skill, so older workspaces are patched by hand if needed.
+Changes propagate to **new** workspaces on the next `init-physics-intern.sh` run. Existing workspaces carry the methodology baked into their `.claude/`, `.pi/`, `.codex/`, or `.opencode/` at the time they were created — there is no upgrade skill, so older workspaces are patched by hand if needed.
