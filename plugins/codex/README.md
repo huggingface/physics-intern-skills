@@ -19,7 +19,7 @@ In a fresh, empty folder for your research problem:
 
 ```
 codex
-> $init-physics-intern        # scaffolds the workspace (asks for one approval)
+> $physics-intern:init-physics-intern    # scaffolds the workspace (asks for one approval)
 ```
 
 Then:
@@ -45,5 +45,5 @@ The one approval is expected: the script writes `.codex/` and runs `git init`, w
 
 ## Notes
 
-- The plugin only adds the user-invoked `$init-physics-intern` skill. The methodology skills and sub-agent roles are scaffolded **into each workspace**, not added to your other projects.
+- The plugin only adds the user-invoked `$physics-intern:init-physics-intern` skill. The methodology skills and sub-agent roles are scaffolded **into each workspace**, not added to your other projects.
 - This repository is a generated build artifact. The methodology source of truth lives upstream and is assembled here by `build-codex-plugin.sh` — edit upstream, not here.

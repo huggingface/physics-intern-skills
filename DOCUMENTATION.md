@@ -346,6 +346,43 @@ Publish: push the built tree to the plugin repo. Users run `/plugin marketplace 
 Local test before publishing: `bash build-plugin.sh /tmp/out` then `claude --plugin-dir /tmp/out/plugin` in a scratch folder **outside this repo** (so the dev repo's sandbox rules don't apply), and run `/physics-intern:init-physics-intern`.
 
 
+## Distribution as a Codex CLI plugin
+
+Codex (since ~v0.136) has a first-class plugin + marketplace system that mirrors Claude Code's, so the Codex plugin follows the same **Design A**: it does not carry the methodology as global skills (that would pollute every project) — it only scaffolds a workspace into the current folder, exactly like the bash script. The user invokes it explicitly as `$physics-intern:init-physics-intern`; after it runs they **restart Codex in the folder** and accept the project-trust prompt so the workspace's `AGENTS.md`, `.agents/skills/`, `.codex/agents/`, and `.codex/config.toml` load.
+
+### Layout
+
+Authored sources live under `plugins/codex/` (committed here):
+
+```
+plugins/codex/
+├── .agents/plugins/marketplace.json        marketplace manifest (lists the plugin)
+├── README.md                               published-repo landing page
+└── plugin/
+    ├── .codex-plugin/plugin.json           plugin manifest (name "physics-intern", semver, "skills":"./skills/")
+    ├── skills/init-physics-intern/
+    │   ├── SKILL.md                        the $physics-intern:init-physics-intern skill
+    │   └── agents/openai.yaml              policy.allow_implicit_invocation:false → user-only, never auto-fired
+    └── scripts/plugin-init.sh              non-interactive renderer+scaffolder (refuses if a workspace exists)
+```
+
+How the skill works: `SKILL.md` (frontmatter `name` + `description`) tells the model to run `bash "${PLUGIN_ROOT}/scripts/plugin-init.sh"` via the shell tool. Unlike Claude (where `${CLAUDE_PLUGIN_ROOT}` is only available in an expansion-time `` !`…` `` block, **not** in model-issued shell), Codex **does** expose `${PLUGIN_ROOT}` in the model-issued shell command (verified on v0.136), so no `!`-block trick is needed. The script also self-locates its plugin root from `${BASH_SOURCE[0]}`, so it works regardless. It renders `host=codex` from the bundled `commons/` + `hosts/codex/`, scaffolds the workspace, commits, and prints exactly one `RESULT: initialized` / `RESULT: already-initialized` line; the rest of `SKILL.md` instructs the agent to relay the edit-`problem.md` + restart message. The one approval is for writing `.codex/` and running `git init`, which Codex's workspace-write sandbox keeps read-only by default.
+
+### Build and publish
+
+`build-codex-plugin.sh` assembles a complete, self-contained plugin into a separate published repo (a pure artifact — never hand-edit it):
+
+```
+bash build-codex-plugin.sh [output-dir]    # default: ../physics-intern-codex-plugin
+```
+
+It copies the authored files from `plugins/codex/` and **vendors** `commons/` (incl. `render.py`) and `hosts/codex/` into `plugin/` (rsync, excluding `__pycache__`/`.DS_Store`). Source of truth stays `commons/` + `hosts/codex/`; the plugin's per-harness repo is `physics-intern-codex-plugin`.
+
+Publish: push the built tree to the plugin repo. Users run `codex plugin marketplace add <owner>/physics-intern-codex-plugin` then `codex plugin add physics-intern@physics-intern-codex` (`<marketplace>` is the `name` in `marketplace.json`). Updates: bump `version` in `plugins/codex/plugin/.codex-plugin/plugin.json`, rebuild, push, and `codex plugin marketplace upgrade`.
+
+Local test before publishing: `bash build-codex-plugin.sh /tmp/out` then `codex plugin marketplace add /tmp/out` + `codex plugin add physics-intern@physics-intern-codex`, restart Codex in a scratch folder **outside this repo**, and run `$physics-intern:init-physics-intern`.
+
+
 ## Workspace runtime: how the methodology executes
 
 This is the high-level shape of what happens **inside** a rendered workspace. The authoritative rules live in `commons/workspace-doc.md` (which becomes the workspace's `CLAUDE.md` / `AGENTS.md`); the summary below is for orientation.

@@ -77,10 +77,19 @@ pi                                              # auto-installs pi-subagents + p
 cd ../my-workspace
 codex                                           # on first run, accept the "trust this project" prompt
                                                 # — otherwise .codex/config.toml (sandbox + web search) is ignored
-> /survey
+> $survey
 ```
 
 Sub-agent roles auto-discover from the rendered `.codex/agents/*.toml` files (no config registration). Dispatch uses `spawn_agent` + `wait_agent`; subagents are enabled by default in current Codex.
+
+**Or install the Codex plugin** for a discoverable, one-command bootstrap (no clone needed):
+
+```
+codex plugin marketplace add huggingface/physics-intern-codex-plugin
+codex plugin add physics-intern@physics-intern-codex
+```
+
+Restart Codex, then run `$physics-intern:init-physics-intern` in an empty folder for your problem. (The plugin repo is built from this one via `build-codex-plugin.sh`; see [DOCUMENTATION.md](DOCUMENTATION.md#distribution-as-a-codex-cli-plugin).)
 
 ### OpenCode
 
