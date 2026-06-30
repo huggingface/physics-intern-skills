@@ -14,11 +14,11 @@ This skill runs in the **main-agent context** — it drives the loop. Each step 
 Common args:
 - `max-iterations=N` — total sub-agent dispatch cap. Default: 30.
 - `max-derivations=N` — combined `/derive` + `/compute` cap. Default: 12.
-- `start-from=start|survey|plan|loop|finalize` — explicit resume point. Default: infer from files on disk (`{{PROBLEM_ONELINER}}` still in `{{workspace_doc}}` → start at `/start-research`; no `survey.md` → start at `/survey`; no `plan.md` → start at `/research-plan`; otherwise enter the dispatch loop).
+- `start-from=survey|plan|loop|finalize` — explicit resume point. Default: infer from files on disk (no `survey.md` → start at `/survey`; no `plan.md` → start at `/research-plan`; otherwise enter the dispatch loop).
 
-## Prerequisite: workspace header
+## Prerequisite: problem statement
 
-Before the loop proper, check that `/start-research` has already run: `{{workspace_doc}}` must not still contain the literal string `{{PROBLEM_ONELINER}}`. If it does, dispatch `/start-research` (with `from=autoresearch` in the arguments so the skill returns a structured reply instead of human-facing text), integrate the one-liner into context, and continue. The user is presumed to have already filled in `problem.md` — if `/start-research` reports that placeholders are still present in `problem.md`, halt and tell the user to fill it in.
+Before the loop proper, confirm `problem.md` exists and has been filled in — its `### Problem setup` and `### Main question` sections must not still hold the skeleton placeholder text. If they do, halt and tell the user to fill in `problem.md`.
 
 ## What changes vs. normal flow
 
@@ -79,9 +79,7 @@ Print to the user:
 ```
 init:
   ensure notes/auto-decisions.md exists (create with a one-line header if not).
-  if {{workspace_doc}} still contains "{{PROBLEM_ONELINER}}":
-    /start-research (from=autoresearch)  → integrate one-liner into context.
-    if it reports problem.md still has placeholders: halt and ask user.
+  if problem.md still has skeleton placeholder text: halt and ask the user to fill it in.
   determine entry point from start-from arg or file inspection.
   initialise counters:
     iterations=0,

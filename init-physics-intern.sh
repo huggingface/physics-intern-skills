@@ -9,10 +9,9 @@
 # created if missing. The script renders workspace files from commons/ (shared
 # methodology) plus hosts/<host>/ (host-specific config and extras) via
 # commons/render.py, scaffolds a problem.md skeleton, creates artefact dirs,
-# and makes the first git commit. It does NOT extract a problem one-liner —
-# the user fills in problem.md, then launches their coding agent and runs
-# /start-research, which reads problem.md and substitutes the
-# {{PROBLEM_ONELINER}} placeholders.
+# and makes the first git commit. The user then fills in problem.md, launches
+# their coding agent, and runs /survey to begin — the agent reads problem.md
+# directly.
 
 set -euo pipefail
 
@@ -165,27 +164,23 @@ fi
 case "$HOST" in
   claude)
     LAUNCH_HINT="Launch Claude Code in this directory."
-    HEADER_FILES="CLAUDE.md and research_log.md"
     ;;
   pi)
     LAUNCH_HINT="Register the workspace as a local Pi package, then launch Pi:
        pi install -l .            # makes /survey, /derive, etc. visible
        pi                         # launch (Pi auto-installs pi-subagents + pi-web-access from .pi/settings.json)"
-    HEADER_FILES="AGENTS.md and research_log.md"
     ;;
   codex)
     LAUNCH_HINT="Launch Codex in this directory:
        codex                       # first run will prompt to trust the project — accept it,
                                    # otherwise .codex/config.toml (incl. agent_roles) is ignored
        Sub-agent dispatch uses spawn_agent + wait_agent (multi_agents_v2)."
-    HEADER_FILES="AGENTS.md and research_log.md"
     ;;
   opencode)
     LAUNCH_HINT="Launch OpenCode in this directory:
        opencode                    # commands (/survey, /derive, …) and sub-agents are
                                    # auto-discovered from .opencode/ — no registration step
        Sub-agent dispatch uses the Task tool (subagent_type)."
-    HEADER_FILES="AGENTS.md and research_log.md"
     ;;
 esac
 
@@ -198,10 +193,7 @@ $HEADER
 Next steps:
   1. Edit problem.md — fill in '### Problem setup' and '### Main question'.
   2. $LAUNCH_HINT
-  3. Run /start-research to extract the problem one-liner, substitute the
-     {{PROBLEM_ONELINER}} placeholders in $HEADER_FILES, and
-     point the main agent at /survey.
-     (Or run /autoresearch to drive the full pipeline autonomously — it will
-     invoke /start-research itself if the placeholder is still present.)
+  3. Run /survey to begin — the agent reads problem.md directly.
+     (Or run /autoresearch to drive the full pipeline autonomously.)
 
 EOF

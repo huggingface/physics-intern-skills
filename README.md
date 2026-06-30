@@ -32,8 +32,7 @@ cd ../my-new-workspace
 $EDITOR problem.md
 
 claude                                          # launch Claude Code in this directory
-> /start-research                               # substitutes placeholders, makes the first commit
-> /survey                                       # begin
+> /survey                                       # begin (the agent reads problem.md directly)
 ```
 
 That's it. The agent will work through the research arc, dispatching sub-agents, integrating their results, and committing after each step. You can intervene at any point: edit files directly, ask the main agent a question, or run a slash command yourself.
@@ -49,7 +48,6 @@ Pick a host at workspace-creation time via `--host`. Same methodology in every c
 ./init-physics-intern.sh ../my-workspace        # --host=claude is the default
 cd ../my-workspace
 claude
-> /start-research
 > /survey
 ```
 
@@ -60,7 +58,6 @@ claude
 cd ../my-workspace
 pi install -l .                                 # register the workspace as a local Pi package
 pi                                              # auto-installs pi-subagents + pi-web-access
-> /start-research
 > /survey
 ```
 
@@ -71,7 +68,6 @@ pi                                              # auto-installs pi-subagents + p
 cd ../my-workspace
 codex                                           # on first run, accept the "trust this project" prompt
                                                 # — otherwise .codex/config.toml (incl. agent_roles) is ignored
-> /start-research
 > /survey
 ```
 
@@ -83,7 +79,6 @@ Sub-agent dispatch on Codex uses `spawn_agent` + `wait_agent` from the `multi_ag
 ./init-physics-intern.sh --host=opencode ../my-workspace
 cd ../my-workspace
 opencode                                        # commands and sub-agents auto-discovered from .opencode/
-> /start-research
 > /survey
 ```
 
@@ -95,7 +90,7 @@ Sub-agent dispatch on OpenCode uses the native `Task` tool with `subagent_type` 
 The bootstrap script renders a workspace from this repo's templates:
 
 - Creates `CLAUDE.md` (Claude) or `AGENTS.md` (Pi, Codex, OpenCode) — the main-agent prompt encoding the entire research methodology.
-- Renders the seven sub-agent role prompts and nine workflow skills into the host's expected layout.
+- Renders the seven sub-agent role prompts and eight workflow skills into the host's expected layout.
 - Scaffolds `problem.md` with empty `### Problem setup` and `### Main question` blocks if you haven't written one.
 - Creates artefact directories (`derivations/`, `computations/`, `critiques/`, `notes/`, `references/`, `data/`, plus `.briefs/` under `derivations/` and `computations/`).
 - Seeds `notes/flags.md` (where the main agent logs its handling of sub-agent flags).
@@ -133,7 +128,6 @@ You only ever need to edit `problem.md` (and optionally any of the above if you 
 
 | Skill | What it does |
 |---|---|
-| `/start-research` | One-time prep: read `problem.md`, extract a one-line summary, substitute `{{PROBLEM_ONELINER}}` placeholders, commit. |
 | `/survey` | Landscape orientation. Writes `survey.md`. Provisional — later evidence overrides it. |
 | `/research-plan` | Drafts or updates `plan.md`. Pauses for your approval before continuing. |
 | `/derive <claim>` | Analytical derivation in a fresh-context sub-agent. Writes `derivations/D-NNN.md`. |

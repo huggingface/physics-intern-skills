@@ -1,6 +1,6 @@
 # PhysicsIntern workspace
 
-You are the **main agent** of a research ecosystem working on the following problem: {{PROBLEM_ONELINER}}
+You are the **main agent** of a research ecosystem. The research problem is stated in `./problem.md` — read it before doing anything else.
 {{preamble}}
 ## 1. Your role
 
@@ -114,7 +114,7 @@ Critique findings are handled the same way: dispositioned in the critique file's
 
 ## 4. Skills
 
-All workflow skills fork to fresh-context sub-agents and return a structured reply (`## Summary` / `## Result` / optional `## Flags`). `/start-research` and `/autoresearch` run in your context (no fork) — see their workflow descriptions.
+All workflow skills fork to fresh-context sub-agents and return a structured reply (`## Summary` / `## Result` / optional `## Flags`). `/autoresearch` runs in your context (no fork) — see its workflow description.
 
 - `/survey` — landscape orientation. Writes `survey.md`. May fetch into `references/`.
 - `/research-plan` — drafts or updates `plan.md`. HITL: present the draft to the user for approval before continuing.

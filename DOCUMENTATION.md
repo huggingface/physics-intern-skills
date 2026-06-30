@@ -57,8 +57,7 @@ physics-intern/
 │   │   ├── reviewer.md
 │   │   ├── critic.md
 │   │   └── finalizer.md
-│   └── skills/                        # 9 main-agent workflow files
-│       ├── start-research.md
+│   └── skills/                        # 8 main-agent workflow files
 │       ├── survey.md
 │       ├── research-plan.md
 │       ├── derive.md
@@ -216,7 +215,7 @@ Fields:
 
 - `name` (required) — the slash-command name (`/derive`).
 - `description` (required) — used by the host's skill discovery.
-- `agent` — the sub-agent role this skill dispatches. Omit for main-agent-only skills (`/start-research`, `/autoresearch`).
+- `agent` — the sub-agent role this skill dispatches. Omit for main-agent-only skills (`/autoresearch`).
 - `arguments_hint` — short usage hint shown by the host (Claude: `argument-hint`; Pi: `args`).
 - `artefact_kind` — string like `D-NNN` / `C-NNN` / `CR-NNN`. Used by the Pi stub template to render "next available number" guidance.
 - `brief` — path to the dispatch brief the main agent must write before dispatching (only for `/derive`, `/compute`).
@@ -241,7 +240,7 @@ The skill body is rendered into either:
 
 ### Main-agent-only skills
 
-`/start-research` and `/autoresearch` are different: they run in the main-agent context (no fork). `/start-research` reads `problem.md`, extracts a one-line summary, and substitutes the `{{PROBLEM_ONELINER}}` placeholders in the workspace doc and `research_log.md`. `/autoresearch` drives the full pipeline autonomously, skipping the three HITL gates (`/research-plan` review, `/critique` strategy review, and any strategy-changing edit) and logging each skipped decision in `notes/auto-decisions.md`.
+`/autoresearch` is different: it runs in the main-agent context (no fork). It drives the full pipeline autonomously, skipping the three HITL gates (`/research-plan` review, `/critique` strategy review, and any strategy-changing edit) and logging each skipped decision in `notes/auto-decisions.md`.
 
 
 ## Host glue
@@ -292,7 +291,7 @@ Edit this file when the operational discipline changes — what files the main a
 
 ### `commons/research_log.md`
 
-The template for the workspace's `research_log.md`. Carries the canonical section order — Open Questions, Working Claims, Established Results, Dead Ends, Conventions, Sanity Checks — with HTML comments documenting the entry format. The `{{PROBLEM_ONELINER}}` placeholder is substituted by `/start-research` after the user fills in `problem.md`.
+The template for the workspace's `research_log.md`. Carries the canonical section order — Open Questions, Working Claims, Established Results, Dead Ends, Conventions, Sanity Checks — with HTML comments documenting the entry format.
 
 The invariants enforced on `research_log.md` (citation discipline, robust evidence before promotion, monotone Dead Ends, …) live in the workspace doc, not the template. The template is a starting scaffold.
 

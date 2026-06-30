@@ -1,4 +1,4 @@
-# Research Log: {{PROBLEM_ONELINER}}
+# Research Log
 
 ## Open Questions
 
