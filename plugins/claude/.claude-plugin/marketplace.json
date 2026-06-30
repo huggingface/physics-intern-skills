@@ -1,0 +1,11 @@
+{
+  "name": "physics-intern-claude",
+  "owner": { "name": "David Louapre" },
+  "plugins": [
+    {
+      "name": "physics-intern",
+      "source": "./plugin",
+      "description": "Scaffold a PhysicsIntern research workspace in the current folder (Claude Code)."
+    }
+  ]
+}

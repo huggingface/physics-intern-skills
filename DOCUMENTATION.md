@@ -312,6 +312,40 @@ The invariants enforced on `research_log.md` (citation discipline, robust eviden
 Reset path: triggered by the existing-workspace prompt. Removes `.git/`, all rendered host files, all artefact directories, and any other top-level entries — `problem.md` is preserved. The bootstrap commit message becomes "Re-initialize PhysicsIntern workspace (reset, problem.md preserved, host: …)".
 
 
+## Distribution as a Claude Code plugin
+
+`init-physics-intern.sh` is the canonical bootstrap (run before launching the agent). For Claude Code there is also a **plugin** that exposes the bootstrap as a single in-session command `/physics-intern:bootstrap`, for discoverable install + auto-updates. It does **not** carry the methodology as plugin-global skills (that would pollute every project); it only scaffolds a workspace into the current folder, exactly like the bash script. The skills and sub-agents are folder-local, so after `/physics-intern:bootstrap` the user must **restart Claude Code in the folder** for them to register (the command's own output tells them so). The command name deliberately avoids `init` (Claude Code has a built-in `/init`).
+
+### Layout
+
+Authored sources live under `plugins/claude/` (committed here):
+
+```
+plugins/claude/
+├── .claude-plugin/marketplace.json     marketplace manifest (lists the plugin)
+└── plugin/
+    ├── .claude-plugin/plugin.json      plugin manifest (name "physics-intern", semver version)
+    ├── skills/bootstrap/SKILL.md        the /physics-intern:bootstrap command
+    └── scripts/plugin-init.sh          non-interactive renderer+scaffolder (refuses if a workspace exists)
+```
+
+How the command works: `SKILL.md` carries `disable-model-invocation: true` (user-typed only) and a `` !`…` `` block that runs `plugin-init.sh` at expansion time, where `${CLAUDE_PLUGIN_ROOT}` and `${CLAUDE_PROJECT_DIR}` are shell-expanded. The script renders `host=claude` from the bundled `commons/` + `hosts/claude/`, scaffolds the workspace, commits, and prints exactly one `RESULT: initialized` / `RESULT: already-initialized` line; the rest of `SKILL.md` instructs the agent to relay the edit-`problem.md` + restart message.
+
+### Build and publish
+
+`build-plugin.sh` assembles a complete, self-contained plugin into a separate published repo (the build is a pure artifact — never hand-edit it):
+
+```
+bash build-plugin.sh [output-dir]    # default: ../physics-intern-claude-plugin
+```
+
+It copies the authored files from `plugins/claude/` and **vendors** `commons/` (incl. `render.py`) and `hosts/claude/` into `plugin/` (rsync, excluding `__pycache__`/`.DS_Store`) so the plugin is self-contained — installed plugins cannot reference files outside their own root. Source of truth stays `commons/` + `hosts/claude/`; the plugin's per-harness repo is `physics-intern-claude-plugin` (other hosts get their own, e.g. `physics-intern-codex-plugin`).
+
+Publish: push the built tree to the plugin repo. Users run `/plugin marketplace add <owner>/physics-intern-claude-plugin` then `/plugin install physics-intern@physics-intern-claude`. Updates: bump `version` in `plugins/claude/plugin/.claude-plugin/plugin.json` (semver, must bump every release or `/plugin update` is a no-op), rebuild, push.
+
+Local test before publishing: `bash build-plugin.sh /tmp/out` then `claude --plugin-dir /tmp/out/plugin` in a scratch folder **outside this repo** (so the dev repo's sandbox rules don't apply), and run `/physics-intern:bootstrap`.
+
+
 ## Workspace runtime: how the methodology executes
 
 This is the high-level shape of what happens **inside** a rendered workspace. The authoritative rules live in `commons/workspace-doc.md` (which becomes the workspace's `CLAUDE.md` / `AGENTS.md`); the summary below is for orientation.
