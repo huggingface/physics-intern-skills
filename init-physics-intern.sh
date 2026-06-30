@@ -3,8 +3,10 @@
 # init-physics-intern.sh — bootstrap a PhysicsIntern research workspace.
 #
 # Usage:
-#   init-physics-intern.sh [--host=claude|pi] [target-dir]
+#   init-physics-intern.sh [--host=claude|pi|codex|opencode] [target-dir]
 #
+# If --host is omitted, the script prompts for one interactively (when run from
+# a terminal; otherwise it defaults to claude).
 # If target-dir is omitted, the current directory is used. The target dir is
 # created if missing. The script renders workspace files from commons/ (shared
 # methodology) plus hosts/<host>/ (host-specific config and extras) via
@@ -17,14 +19,16 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Parse CLI args: --host selects the agent host (claude or pi), positional arg
-# is the target directory (defaults to current dir).
-HOST="claude"
+# Parse CLI args: --host selects the agent host, positional arg is the target
+# directory (defaults to current dir). If --host is omitted we ask interactively
+# (see below) when run from a terminal.
+HOST=""
+HOST_SET=0
 TARGET_DIR="."
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --host=*) HOST="${1#--host=}" ;;
-    --host)   HOST="$2"; shift ;;
+    --host=*) HOST="${1#--host=}"; HOST_SET=1 ;;
+    --host)   HOST="$2"; HOST_SET=1; shift ;;
     -h|--help)
       sed -n '2,15p' "${BASH_SOURCE[0]}"
       exit 0 ;;
@@ -35,6 +39,31 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+# No --host given: ask interactively when attached to a terminal; otherwise keep
+# the historical default of claude so piped / non-interactive runs never hang.
+if [[ $HOST_SET -eq 0 ]]; then
+  if [[ -t 0 ]]; then
+    echo "Select an agent host:" >&2
+    echo "  1) claude   — Claude Code (default)" >&2
+    echo "  2) pi       — Pi" >&2
+    echo "  3) codex    — OpenAI Codex CLI" >&2
+    echo "  4) opencode — OpenCode" >&2
+    while :; do
+      printf "Host [1-4, Enter for 1]: " >&2
+      read -r reply || reply=""
+      case "${reply:-1}" in
+        1|claude)   HOST="claude";   break ;;
+        2|pi)       HOST="pi";       break ;;
+        3|codex)    HOST="codex";    break ;;
+        4|opencode) HOST="opencode"; break ;;
+        *) echo "Please enter 1, 2, 3, or 4 (or a host name)." >&2 ;;
+      esac
+    done
+  else
+    HOST="claude"
+  fi
+fi
 
 # Validate host selection — claude, pi, codex, opencode are supported.
 case "$HOST" in

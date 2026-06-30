@@ -25,7 +25,7 @@ The agent host provides web search, Python execution, and sub-agent dispatch. Ph
 git clone <this-repo> physics-intern
 cd physics-intern
 
-./init-physics-intern.sh ../my-new-workspace    # Claude Code by default
+./init-physics-intern.sh ../my-new-workspace    # prompts you to pick a host (default: Claude Code)
 cd ../my-new-workspace
 
 # Edit problem.md — fill in the '### Problem setup' and '### Main question' blocks.
@@ -46,12 +46,12 @@ That's it. The agent will work through the research arc, dispatching sub-agents,
 
 ## Hosts
 
-Pick a host at workspace-creation time via `--host`. Same methodology in every case; the launch sequence differs.
+Pick a host at workspace-creation time via `--host`. If you omit it, the bootstrap prompts you to choose one interactively (defaulting to Claude Code when run non-interactively). Same methodology in every case; the launch sequence differs.
 
 ### Claude Code (default)
 
 ```bash
-./init-physics-intern.sh ../my-workspace        # --host=claude is the default
+./init-physics-intern.sh --host=claude ../my-workspace
 cd ../my-workspace
 claude
 > /survey

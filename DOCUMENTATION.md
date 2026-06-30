@@ -300,7 +300,7 @@ The invariants enforced on `research_log.md` (citation discipline, robust eviden
 
 `init-physics-intern.sh` is a thin shell wrapper around `commons/render.py`. It:
 
-1. Parses `--host` (defaults to `claude`) and the target directory (defaults to `.`).
+1. Parses `--host` and the target directory (defaults to `.`). If `--host` is omitted it prompts interactively for one (claude / pi / codex / opencode) when run from a terminal, and falls back to `claude` for non-interactive (piped) runs.
 2. Detects an existing PhysicsIntern workspace in the target (by probing for `.claude/` + `CLAUDE.md`, `.codex/` + `AGENTS.md`, or `.pi/` + `AGENTS.md` containing the marker `PhysicsIntern workspace`). If found, prompts for a reset (everything except `problem.md` is wiped).
 3. Calls `python3 commons/render.py --host=<host> --target=<abs-path>`.
 4. Scaffolds `problem.md` if missing (setup + main question headings).
