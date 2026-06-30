@@ -37,6 +37,12 @@ claude                                          # launch Claude Code in this dir
 
 That's it. The agent will work through the research arc, dispatching sub-agents, integrating their results, and committing after each step. You can intervene at any point: edit files directly, ask the main agent a question, or run a slash command yourself.
 
+> **Prefer not to clone?** Claude Code and Codex have **one-command install plugins** that scaffold a workspace for you — no clone needed:
+> - [`huggingface/physics-intern-claude-plugin`](https://github.com/huggingface/physics-intern-claude-plugin) (Claude Code)
+> - [`huggingface/physics-intern-codex-plugin`](https://github.com/huggingface/physics-intern-codex-plugin) (Codex CLI)
+>
+> See the per-host instructions under [Hosts](#hosts) below.
+
 
 ## Hosts
 
@@ -58,7 +64,7 @@ claude
 /plugin install physics-intern@physics-intern-claude
 ```
 
-Restart Claude Code, then run `/init-physics-intern` in an empty folder for your problem. (The plugin repo is built from this one via `build-plugin.sh`; see [DOCUMENTATION.md](DOCUMENTATION.md#distribution-as-a-claude-code-plugin).)
+Restart Claude Code, then run `/init-physics-intern` in an empty folder for your problem. (Plugin repo: [`huggingface/physics-intern-claude-plugin`](https://github.com/huggingface/physics-intern-claude-plugin), built from this one via `build-plugin.sh`; see [DOCUMENTATION.md](DOCUMENTATION.md#distribution-as-a-claude-code-plugin).)
 
 ### Pi
 
@@ -89,7 +95,7 @@ codex plugin marketplace add huggingface/physics-intern-codex-plugin
 codex plugin add physics-intern@physics-intern-codex
 ```
 
-Restart Codex, then run `$physics-intern:init-physics-intern` in an empty folder for your problem. (The plugin repo is built from this one via `build-codex-plugin.sh`; see [DOCUMENTATION.md](DOCUMENTATION.md#distribution-as-a-codex-cli-plugin).)
+Restart Codex, then run `$physics-intern:init-physics-intern` in an empty folder for your problem. (Plugin repo: [`huggingface/physics-intern-codex-plugin`](https://github.com/huggingface/physics-intern-codex-plugin), built from this one via `build-codex-plugin.sh`; see [DOCUMENTATION.md](DOCUMENTATION.md#distribution-as-a-codex-cli-plugin).)
 
 ### OpenCode
 
