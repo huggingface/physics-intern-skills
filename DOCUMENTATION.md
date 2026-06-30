@@ -314,7 +314,7 @@ Reset path: triggered by the existing-workspace prompt. Removes `.git/`, all ren
 
 ## Distribution as a Claude Code plugin
 
-`init-physics-intern.sh` is the canonical bootstrap (run before launching the agent). For Claude Code there is also a **plugin** that exposes the bootstrap as a single in-session command `/physics-intern:bootstrap`, for discoverable install + auto-updates. It does **not** carry the methodology as plugin-global skills (that would pollute every project); it only scaffolds a workspace into the current folder, exactly like the bash script. The skills and sub-agents are folder-local, so after `/physics-intern:bootstrap` the user must **restart Claude Code in the folder** for them to register (the command's own output tells them so). The command name deliberately avoids `init` (Claude Code has a built-in `/init`).
+`init-physics-intern.sh` is the canonical bootstrap (run before launching the agent). For Claude Code there is also a **plugin** that exposes the bootstrap as a single in-session command `/physics-intern:init-physics-intern` (shown in the UI as `/init-physics-intern (physics-intern)`), for discoverable install + auto-updates. It does **not** carry the methodology as plugin-global skills (that would pollute every project); it only scaffolds a workspace into the current folder, exactly like the bash script. The skills and sub-agents are folder-local, so after running it the user must **restart Claude Code in the folder** for them to register (the command's own output tells them so).
 
 ### Layout
 
@@ -325,7 +325,7 @@ plugins/claude/
 ├── .claude-plugin/marketplace.json     marketplace manifest (lists the plugin)
 └── plugin/
     ├── .claude-plugin/plugin.json      plugin manifest (name "physics-intern", semver version)
-    ├── skills/bootstrap/SKILL.md        the /physics-intern:bootstrap command
+    ├── skills/init-physics-intern/SKILL.md   the /physics-intern:init-physics-intern command
     └── scripts/plugin-init.sh          non-interactive renderer+scaffolder (refuses if a workspace exists)
 ```
 
@@ -343,7 +343,7 @@ It copies the authored files from `plugins/claude/` and **vendors** `commons/` (
 
 Publish: push the built tree to the plugin repo. Users run `/plugin marketplace add <owner>/physics-intern-claude-plugin` then `/plugin install physics-intern@physics-intern-claude`. Updates: bump `version` in `plugins/claude/plugin/.claude-plugin/plugin.json` (semver, must bump every release or `/plugin update` is a no-op), rebuild, push.
 
-Local test before publishing: `bash build-plugin.sh /tmp/out` then `claude --plugin-dir /tmp/out/plugin` in a scratch folder **outside this repo** (so the dev repo's sandbox rules don't apply), and run `/physics-intern:bootstrap`.
+Local test before publishing: `bash build-plugin.sh /tmp/out` then `claude --plugin-dir /tmp/out/plugin` in a scratch folder **outside this repo** (so the dev repo's sandbox rules don't apply), and run `/physics-intern:init-physics-intern`.
 
 
 ## Workspace runtime: how the methodology executes

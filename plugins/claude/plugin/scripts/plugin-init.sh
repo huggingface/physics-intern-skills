@@ -2,7 +2,8 @@
 #
 # plugin-init.sh — non-interactive PhysicsIntern workspace bootstrap.
 #
-# Invoked by the /physics-intern:bootstrap command (see ../skills/bootstrap/SKILL.md) via a
+# Invoked by the /physics-intern:init-physics-intern command (see
+# ../skills/init-physics-intern/SKILL.md) via a
 # command `!` block, so it runs with ${CLAUDE_PLUGIN_ROOT} and ${CLAUDE_PROJECT_DIR}
 # expanded by the shell. It renders the bundled host=claude templates into the
 # target directory, scaffolds artefact dirs + problem.md, and makes the first git
@@ -84,6 +85,6 @@ if [[ ! -d .git ]]; then
 fi
 git add -A
 git commit -q -m "Initialize PhysicsIntern workspace (Claude Code plugin)" \
-              -m "Bootstrapped by /physics-intern:bootstrap."
+              -m "Bootstrapped by /physics-intern:init-physics-intern."
 
 echo "RESULT: initialized at $TARGET_ABS"

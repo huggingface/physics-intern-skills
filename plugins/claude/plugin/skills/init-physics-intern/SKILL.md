@@ -1,5 +1,5 @@
 ---
-name: bootstrap
+name: init-physics-intern
 description: Scaffold a PhysicsIntern research workspace in the current folder.
 disable-model-invocation: true
 ---
