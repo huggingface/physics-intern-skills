@@ -173,8 +173,8 @@ case "$HOST" in
   codex)
     LAUNCH_HINT="Launch Codex in this directory:
        codex                       # first run will prompt to trust the project — accept it,
-                                   # otherwise .codex/config.toml (incl. agent_roles) is ignored
-       Sub-agent dispatch uses spawn_agent + wait_agent (multi_agents_v2)."
+                                   # otherwise .codex/config.toml (sandbox + web search) is ignored
+       Sub-agent roles auto-discover from .codex/agents/*.toml; dispatch uses spawn_agent + wait_agent."
     ;;
   opencode)
     LAUNCH_HINT="Launch OpenCode in this directory:

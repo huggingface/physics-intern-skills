@@ -299,25 +299,10 @@ def render_agents(host: dict, target: Path) -> list[dict]:
     return metas
 
 
-def register_codex_agent_roles(metas: list[dict], target: Path) -> None:
-    """Append `[agent_roles.<name>]` blocks to .codex/config.toml.
-
-    Codex discovers user-defined roles via the `agent_roles` table in the
-    project config; each block points at a per-role TOML file. The base
-    config.toml ships in `hosts/codex/extras/`; we append the registrations
-    here after agents have been rendered.
-    """
-    cfg_path = target / ".codex" / "config.toml"
-    blocks = ["", "# Sub-agent role registrations (appended by the PhysicsIntern renderer)."]
-    for meta in metas:
-        name = meta["name"]
-        blocks.append("")
-        blocks.append(f"[agent_roles.{name}]")
-        blocks.append(f"name = {toml_basic_string(name)}")
-        blocks.append(f"description = {toml_basic_string(meta['description'])}")
-        blocks.append(f'config_file = ".codex/agents/{name}.toml"')
-    with cfg_path.open("a") as f:
-        f.write("\n".join(blocks) + "\n")
+# Codex sub-agents are auto-discovered from the `.codex/agents/*.toml` files
+# rendered by `_render_agent_toml` — current Codex (>= 0.x) loads every TOML
+# role in that directory with no `config.toml` registration step, so there is
+# no register step here (older Codex used a now-removed `[agent_roles.*]` table).
 
 
 # ----- skill rendering -----
@@ -503,11 +488,6 @@ def main() -> int:
     render_commons_file("research_log.md", "research_log.md", host, target)
     render_gitignore(host, target)
     render_host_extras(host, target)
-
-    # Codex needs its sub-agent roles registered in .codex/config.toml after
-    # the extras have been copied (the base config.toml ships in extras/).
-    if host["name"] == "codex":
-        register_codex_agent_roles(agent_metas, target)
 
     print(
         f"Rendered host={args.host}: {len(agent_metas)} agents + {n_skills} skills "

@@ -76,11 +76,11 @@ pi                                              # auto-installs pi-subagents + p
 ./init-physics-intern.sh --host=codex ../my-workspace
 cd ../my-workspace
 codex                                           # on first run, accept the "trust this project" prompt
-                                                # — otherwise .codex/config.toml (incl. agent_roles) is ignored
+                                                # — otherwise .codex/config.toml (sandbox + web search) is ignored
 > /survey
 ```
 
-Sub-agent dispatch on Codex uses `spawn_agent` + `wait_agent` from the `multi_agents_v2` namespace, which is under active OpenAI development.
+Sub-agent roles auto-discover from the rendered `.codex/agents/*.toml` files (no config registration). Dispatch uses `spawn_agent` + `wait_agent`; subagents are enabled by default in current Codex.
 
 ### OpenCode
 

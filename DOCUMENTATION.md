@@ -84,7 +84,7 @@ physics-intern/
 │   │   ├── host.toml                  # agent_format="toml"; tools collapse onto shell_command + apply_patch
 │   │   ├── preamble.md                # Codex tool discipline
 │   │   ├── dispatch_example.md        # spawn_agent + wait_agent example
-│   │   └── extras/.codex/config.toml  # sandbox + web_search; renderer appends [agent_roles.*] blocks
+│   │   └── extras/.codex/config.toml  # sandbox + web_search (roles auto-discover from .codex/agents/)
 │   └── opencode/
 │       ├── host.toml                  # skills_layout="flat"; mode=subagent; YAML+md agents, native tools
 │       ├── dispatch_example.md        # Task tool (subagent_type) example
@@ -125,7 +125,7 @@ It performs, in order:
 5. **Render `research_log.md`** — substituted from the same template.
 6. **Render `.gitignore`** — `commons/gitignore` plus optional `hosts/<host>/gitignore.extra`.
 7. **Copy host extras** — every file under `hosts/<host>/extras/` is copied to the workspace, preserving relative paths.
-8. **(Codex only)** **Register agent roles** — append `[agent_roles.<name>]` blocks to `.codex/config.toml` so Codex discovers the rendered TOML role files.
+There is no Codex-specific registration step: current Codex auto-discovers sub-agent roles from the `.codex/agents/*.toml` files written in step 2 (older Codex used a now-removed `[agent_roles.*]` config table).
 
 The renderer requires Python 3.11+ (`tomllib`), no third-party deps. Frontmatter parsing is intentionally minimal (top-level scalars, flow and block lists); if we ever need nested mappings or anchors we'll swap in PyYAML.
 
@@ -156,7 +156,7 @@ Each host emits frontmatter in its own order and adds its own extras:
 
 - **Claude**: `name`, `description`, `tools`. No `output:` (Claude has no native concept). No agent extras.
 - **Pi**: `name`, `description`, `thinking`, `tools`, `output`. `thinking: high` is appended via `agent_extra_fields`. `output:` is the per-artefact path pattern; agents without a fixed output (e.g. reviewer) omit it.
-- **Codex**: not YAML — the entire role is a TOML file with `name`, `description`, and a `developer_instructions = """…"""` multi-line string. Roles are registered in `.codex/config.toml` under `[agent_roles.<name>]`.
+- **Codex**: not YAML — the entire role is a TOML file with `name`, `description`, and a `developer_instructions = """…"""` multi-line string. Roles are auto-discovered from `.codex/agents/*.toml` (filename matches `name`) — no `.codex/config.toml` registration step.
 - **OpenCode**: `description`, `mode`. No `name` (OpenCode derives the agent name from the filename) and no `tools` (per-role gating omitted). `mode: subagent` is appended via `agent_extra_fields` to mark each role as Task-tool-invokable. Agents are auto-discovered from `.opencode/agents/` — no registration step.
 
 
@@ -277,7 +277,7 @@ Optional:
 
 - **Claude** — single-file skill layout, YAML+markdown agents. Dispatch via the `Task` tool with `subagent_type=<agent name>`. Settings file at `.claude/settings.json`.
 - **Pi** — two-file skill layout (stub + prompt), YAML+markdown agents. Dispatch via Pi's `subagent` tool (JSON payload). Workspace launch: `pi install -l .` (registers the project as a local Pi package and installs `pi-subagents` + `pi-web-access` from `.pi/settings.json`), then `pi`.
-- **Codex CLI** — single-file skill layout (like Claude), but agents are **TOML files** registered as `[agent_roles.<name>]` blocks in `.codex/config.toml`. Dispatch via `spawn_agent` + `wait_agent` (Codex's `multi_agents_v2` namespace, under active OpenAI development). Workspace launch: `codex`, then accept the project-trust prompt on first run so `config.toml` is honoured.
+- **Codex CLI** — single-file skill layout (like Claude), with agents as **TOML files** auto-discovered from `.codex/agents/*.toml` (`name`/`description`/`developer_instructions`; no `config.toml` registration). Dispatch via `spawn_agent` + `wait_agent`; subagents are enabled by default in current Codex (the legacy `[agent_roles.*]` table and `multi_agents_v2` namespace are gone). Workspace launch: `codex`, then accept the project-trust prompt on first run so `config.toml` (sandbox + web search) is honoured.
 - **OpenCode** — the closest host to Claude Code. YAML+markdown agents under `.opencode/agents/` and **flat single-file commands** under `.opencode/commands/<name>.md` (`skills_layout = "flat"`), both auto-discovered (no registration). Dispatch via the native `Task` tool with `subagent_type` — identical signature to Claude. Native tool names match the methodology's generic references, so there is no `preamble.md`. Project config ships as `extras/opencode.json` (permission defaults). Workspace launch: `opencode`. **Sessions are stored in a single SQLite DB** at `${XDG_DATA_HOME:-~/.local/share}/opencode/opencode.db` (not JSONL) — the `investigate-run` audit skill queries it via `session.directory` + `parent_id`. **Model choice dominates sub-agent reliability**: weak models stall after reading a brief instead of writing the artefact (the main agent re-dispatches and self-heals, but wastes work) — pin a strong model in `opencode.json` or via `opencode --model`.
 
 

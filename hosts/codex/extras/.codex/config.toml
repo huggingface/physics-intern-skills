@@ -2,11 +2,11 @@
 #
 # Codex only loads this file after the user marks the project as trusted.
 # The first time you launch `codex` in this directory, accept the trust
-# prompt; subsequent launches will pick up the sandbox settings and the
-# [agent_roles.*] registrations below.
+# prompt; subsequent launches will pick up the sandbox settings below.
 #
-# The [agent_roles.*] blocks at the bottom of this file are appended by the
-# PhysicsIntern renderer (one per sub-agent role).
+# Sub-agent roles are NOT registered here: current Codex auto-discovers them
+# from the .codex/agents/*.toml files the renderer writes, so this file only
+# carries the workspace sandbox + web-search settings.
 
 sandbox_mode = "workspace-write"
 web_search = "cached"
