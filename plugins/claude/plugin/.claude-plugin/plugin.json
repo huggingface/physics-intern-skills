@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "description": "Scaffold a PhysicsIntern research workspace in the current folder (Claude Code).",
   "author": { "name": "David Louapre" },
-  "homepage": "https://github.com/OWNER/physics-intern-claude-plugin",
-  "repository": "https://github.com/OWNER/physics-intern-claude-plugin",
+  "homepage": "https://github.com/huggingface/physics-intern-claude-plugin",
+  "repository": "https://github.com/huggingface/physics-intern-claude-plugin",
   "license": "MIT",
   "keywords": ["physics", "mathematics", "research", "methodology", "agents"]
 }

@@ -27,8 +27,9 @@ fi
 
 mkdir -p "$OUT/.claude-plugin"
 
-# 1. Marketplace manifest at the published repo root.
+# 1. Marketplace manifest + repo landing page at the published repo root.
 cp "$SRC/.claude-plugin/marketplace.json" "$OUT/.claude-plugin/marketplace.json"
+cp "$SRC/README.md" "$OUT/README.md"
 
 # rsync excludes build cruft (__pycache__, .DS_Store) so it never ships.
 EXCLUDES=(--exclude='__pycache__' --exclude='.DS_Store')

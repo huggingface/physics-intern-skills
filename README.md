@@ -51,6 +51,15 @@ claude
 > /survey
 ```
 
+**Or install the Claude Code plugin** for a discoverable, one-command bootstrap (no clone needed):
+
+```
+/plugin marketplace add huggingface/physics-intern-claude-plugin
+/plugin install physics-intern@physics-intern-claude
+```
+
+Restart Claude Code, then run `/init-physics-intern` in an empty folder for your problem. (The plugin repo is built from this one via `build-plugin.sh`; see [DOCUMENTATION.md](DOCUMENTATION.md#distribution-as-a-claude-code-plugin).)
+
 ### Pi
 
 ```bash
