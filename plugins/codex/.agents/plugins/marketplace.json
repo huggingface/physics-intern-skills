@@ -1,0 +1,16 @@
+{
+  "name": "physics-intern-codex",
+  "interface": {
+    "displayName": "PhysicsIntern (Codex)"
+  },
+  "plugins": [
+    {
+      "name": "physics-intern",
+      "source": {
+        "source": "local",
+        "path": "./plugin"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

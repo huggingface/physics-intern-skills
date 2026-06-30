@@ -1,0 +1,11 @@
+{
+  "name": "physics-intern",
+  "version": "0.1.0",
+  "description": "Scaffold a PhysicsIntern research workspace in the current folder (Codex CLI).",
+  "author": { "name": "David Louapre" },
+  "homepage": "https://github.com/huggingface/physics-intern-codex-plugin",
+  "repository": "https://github.com/huggingface/physics-intern-codex-plugin",
+  "license": "MIT",
+  "keywords": ["physics", "mathematics", "research", "methodology", "agents"],
+  "skills": "./skills/"
+}

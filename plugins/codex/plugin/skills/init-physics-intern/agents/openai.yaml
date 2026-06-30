@@ -1,0 +1,9 @@
+# Make this a user-only skill: Codex must never invoke it implicitly from a
+# prompt match (it scaffolds .codex/ and runs git init — destructive if fired
+# by accident). The user triggers it explicitly with `$init-physics-intern`.
+policy:
+  allow_implicit_invocation: false
+
+interface:
+  display_name: Initialize PhysicsIntern workspace
+  short_description: Scaffold a PhysicsIntern research workspace in the current folder.
