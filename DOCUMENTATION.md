@@ -278,7 +278,7 @@ Optional:
 - **Claude** — single-file skill layout, YAML+markdown agents. Dispatch via the `Task` tool with `subagent_type=<agent name>`. Settings file at `.claude/settings.json`.
 - **Pi** — two-file skill layout (stub + prompt), YAML+markdown agents. Dispatch via Pi's `subagent` tool (JSON payload). Workspace launch: `pi install -l .` (registers the project as a local Pi package and installs `pi-subagents` + `pi-web-access` from `.pi/settings.json`), then `pi`.
 - **Codex CLI** — single-file skill layout (like Claude), with agents as **TOML files** auto-discovered from `.codex/agents/*.toml` (`name`/`description`/`developer_instructions`; no `config.toml` registration). Dispatch via `spawn_agent` + `wait_agent`; subagents are enabled by default in current Codex (the legacy `[agent_roles.*]` table and `multi_agents_v2` namespace are gone). Workspace launch: `codex`, then accept the project-trust prompt on first run so `config.toml` (sandbox + web search) is honoured.
-- **OpenCode** — the closest host to Claude Code. YAML+markdown agents under `.opencode/agents/` and **flat single-file commands** under `.opencode/commands/<name>.md` (`skills_layout = "flat"`), both auto-discovered (no registration). Dispatch via the native `Task` tool with `subagent_type` — identical signature to Claude. Native tool names match the methodology's generic references, so there is no `preamble.md`. Project config ships as `extras/opencode.json` (permission defaults). Workspace launch: `opencode`. **Sessions are stored in a single SQLite DB** at `${XDG_DATA_HOME:-~/.local/share}/opencode/opencode.db` (not JSONL) — the `investigate-run` audit skill queries it via `session.directory` + `parent_id`. **Model choice dominates sub-agent reliability**: weak models stall after reading a brief instead of writing the artefact (the main agent re-dispatches and self-heals, but wastes work) — pin a strong model in `opencode.json` or via `opencode --model`.
+- **OpenCode** — close to Claude Code in file shapes. YAML+markdown agents under `.opencode/agents/` (`mode: subagent`, name derived from filename) and **flat single-file commands** under `.opencode/commands/<name>.md` (`skills_layout = "flat"`), both auto-discovered (no registration). Dispatch via the native `task` tool (`subagent_type="<role>"`) or an `@<role>` mention — **but custom sub-agent dispatch is version-dependent**: some builds hardcode `subagent_type` to the built-ins `explore`/`general`/`mary` and ignore custom roles ([opencode #29616](https://github.com/anomalyco/opencode/issues/29616)). `hosts/opencode/dispatch_example.md` carries the dispatch syntax plus the in-context fallback for builds that can't dispatch the roles — verify against the installed version. Native tool names match the methodology's generic references, so there is no `preamble.md`. Project config ships as `extras/opencode.json` (permission defaults, incl. `task`/`skill: allow`). Workspace launch: `opencode`. **OpenCode has no hard sandbox** — a permission model (`allow`/`ask`/`deny`), so scaffolding runs without Claude/Codex-style write-to-config friction. **Sessions are stored in a single SQLite DB** at `${XDG_DATA_HOME:-~/.local/share}/opencode/opencode.db` (not JSONL) — the `investigate-run` audit skill queries it via `session.directory` + `parent_id`. **Model choice dominates sub-agent reliability**: weak models stall after reading a brief instead of writing the artefact (the main agent re-dispatches and self-heals, but wastes work) — pin a strong model in `opencode.json` or via `opencode --model`.
 
 
 ## The workspace doc and research log
@@ -381,6 +381,40 @@ It copies the authored files from `plugins/codex/` and **vendors** `commons/` (i
 Publish: push the built tree to the plugin repo. Users run `codex plugin marketplace add <owner>/physics-intern-codex-plugin` then `codex plugin add physics-intern@physics-intern-codex` (`<marketplace>` is the `name` in `marketplace.json`). Updates: bump `version` in `plugins/codex/plugin/.codex-plugin/plugin.json`, rebuild, push, and `codex plugin marketplace upgrade`.
 
 Local test before publishing: `bash build-codex-plugin.sh /tmp/out` then `codex plugin marketplace add /tmp/out` + `codex plugin add physics-intern@physics-intern-codex`, restart Codex in a scratch folder **outside this repo**, and run `$physics-intern:init-physics-intern`.
+
+
+## Distribution as an OpenCode plugin
+
+OpenCode is the odd one out: it has **no plugin marketplace**, and its JS/TS plugin API can register only tools and lifecycle hooks — **not slash commands or skills**. So the Claude/Codex "marketplace add → install → run a command" path can't be reproduced. Instead the bootstrap ships as a **global command file + a vendored scaffolder kit**, installed by a small `install.sh`. Same **Design A** intent (scaffold a workspace into the current folder; don't pollute other projects), delivered differently. After running `/init-physics-intern` the user **restarts OpenCode in the folder** so the workspace's `AGENTS.md`, `.opencode/commands/`, `.opencode/agents/`, and `opencode.json` load.
+
+### Layout
+
+Authored sources live under `plugins/opencode/` (committed here):
+
+```
+plugins/opencode/
+├── README.md                              published-repo landing page
+├── install.sh                             copies the command + kit into ~/.config/opencode/
+└── physics-intern/                        the "kit" (everything the command needs at runtime)
+    ├── commands/init-physics-intern.md    the global /init-physics-intern command
+    └── scripts/plugin-init.sh             non-interactive renderer+scaffolder (refuses if a workspace exists)
+```
+
+How it works: `install.sh` rsyncs the kit to `${XDG_CONFIG_HOME:-~/.config}/opencode/physics-intern/` and copies the command to `${XDG_CONFIG_HOME:-~/.config}/opencode/commands/init-physics-intern.md`, making `/init-physics-intern` available in every project. The command's body runs the scaffolder via an expansion-time `` !`…` `` shell block (OpenCode injects the shell output into the prompt), referencing the script at its fixed install path (`${XDG_CONFIG_HOME:-$HOME/.config}/opencode/physics-intern/scripts/plugin-init.sh`) — there is no plugin-root variable because it is a plain command file, not a plugin. `plugin-init.sh` self-locates its kit root from `${BASH_SOURCE[0]}`, renders `host=opencode` from the bundled `commons/` + `hosts/opencode/`, scaffolds the workspace, commits, and prints exactly one `RESULT: initialized` / `RESULT: already-initialized` line; the rest of the command instructs the agent to relay the edit-`problem.md` + restart message. OpenCode has no hard sandbox, so at most the user approves the single `bash` shell block (depending on their `permission.bash` setting) — milder than Claude/Codex's config-write approval.
+
+### Build and publish
+
+`build-opencode-plugin.sh` assembles a complete, self-contained tree into a separate published repo (a pure artifact — never hand-edit it):
+
+```
+bash build-opencode-plugin.sh [output-dir]    # default: ../physics-intern-opencode-plugin
+```
+
+It copies the authored files from `plugins/opencode/` and **vendors** `commons/` (incl. `render.py`) and `hosts/opencode/` into the kit (`physics-intern/`, rsync excluding `__pycache__`/`.DS_Store`). Source of truth stays `commons/` + `hosts/opencode/`; the published repo is `physics-intern-opencode-plugin`.
+
+Publish: push the built tree to the repo (must be **public** — `git clone` over HTTPS must work). There is no version field to bump and no marketplace to upgrade — users re-run `git pull && ./install.sh` to update.
+
+Local test before publishing: `bash build-opencode-plugin.sh /tmp/out` then `XDG_CONFIG_HOME=/tmp/fakecfg bash /tmp/out/install.sh`, and run `/tmp/fakecfg/opencode/physics-intern/scripts/plugin-init.sh` in a scratch folder to confirm it renders + commits and is idempotent on re-run.
 
 
 ## Workspace runtime: how the methodology executes

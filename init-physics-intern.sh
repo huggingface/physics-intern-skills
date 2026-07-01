@@ -209,7 +209,9 @@ case "$HOST" in
     LAUNCH_HINT="Launch OpenCode in this directory:
        opencode                    # commands (/survey, /derive, …) and sub-agents are
                                    # auto-discovered from .opencode/ — no registration step
-       Sub-agent dispatch uses the Task tool (subagent_type)."
+       Sub-agent dispatch uses the 'task' tool (subagent_type=\"<role>\") or an @<role> mention.
+       Note: dispatching custom sub-agents is version-dependent (opencode #29616) — if your
+       build can't, run the role in-context per the role file. See AGENTS.md."
     ;;
 esac
 

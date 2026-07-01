@@ -37,9 +37,10 @@ claude                                          # launch Claude Code in this dir
 
 That's it. The agent will work through the research arc, dispatching sub-agents, integrating their results, and committing after each step. You can intervene at any point: edit files directly, ask the main agent a question, or run a slash command yourself.
 
-> **Prefer not to clone?** Claude Code and Codex have **one-command install plugins** that scaffold a workspace for you — no clone needed:
-> - [`huggingface/physics-intern-claude-plugin`](https://github.com/huggingface/physics-intern-claude-plugin) (Claude Code)
-> - [`huggingface/physics-intern-codex-plugin`](https://github.com/huggingface/physics-intern-codex-plugin) (Codex CLI)
+> **Prefer not to clone the methodology repo?** Each host has an installable bootstrap that scaffolds a workspace for you:
+> - [`huggingface/physics-intern-claude-plugin`](https://github.com/huggingface/physics-intern-claude-plugin) (Claude Code) — marketplace plugin
+> - [`huggingface/physics-intern-codex-plugin`](https://github.com/huggingface/physics-intern-codex-plugin) (Codex CLI) — marketplace plugin
+> - [`huggingface/physics-intern-opencode-plugin`](https://github.com/huggingface/physics-intern-opencode-plugin) (OpenCode) — clone + `./install.sh` (OpenCode has no plugin marketplace)
 >
 > See the per-host instructions under [Hosts](#hosts) below.
 
@@ -106,7 +107,16 @@ opencode                                        # commands and sub-agents auto-d
 > /survey
 ```
 
-Sub-agent dispatch on OpenCode uses the native `Task` tool with `subagent_type` (the same shape as Claude Code). Commands (`.opencode/commands/`) and agents (`.opencode/agents/`) are auto-discovered — no registration step.
+Sub-agent dispatch on OpenCode uses the native `task` tool (`subagent_type="<role>"`) or an `@<role>` mention. Commands (`.opencode/commands/`) and agents (`.opencode/agents/`) are auto-discovered — no registration step. **Caveat:** dispatching *custom* sub-agents has been version-dependent (some builds hardcode `subagent_type` to the built-ins `explore`/`general`/`mary` — see [opencode #29616](https://github.com/anomalyco/opencode/issues/29616)); if your build can't, the workspace `AGENTS.md` explains the in-context fallback.
+
+**Or install the OpenCode bootstrap** for a global, one-command `/init-physics-intern` (no methodology clone needed). OpenCode has no plugin marketplace, so installation is a clone + installer:
+
+```
+git clone https://github.com/huggingface/physics-intern-opencode-plugin
+cd physics-intern-opencode-plugin && ./install.sh
+```
+
+Restart OpenCode, then run `/init-physics-intern` in an empty folder for your problem. (Repo: [`huggingface/physics-intern-opencode-plugin`](https://github.com/huggingface/physics-intern-opencode-plugin), built from this one via `build-opencode-plugin.sh`; see [DOCUMENTATION.md](DOCUMENTATION.md#distribution-as-an-opencode-plugin).)
 
 
 ## What `init-physics-intern.sh` does
